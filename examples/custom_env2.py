@@ -13,6 +13,7 @@ from gym.spaces import Discrete, Box,MultiDiscrete
 import numpy as np
 import os
 import random
+from ray.rllib.models.tf.misc import normc_initializer
 
 import ray
 from ray import tune
@@ -71,8 +72,7 @@ class SimpleCorridor(gym.Env):
         self.end_pos = config["corridor_length"]
         self.cur_pos = 0
         self.action_space = MultiDiscrete([5,5,5])
-        self.observation_space = Box(
-            0.0, self.end_pos, shape=(1, ), dtype=np.float32)
+        self.observation_space = Box(0.0, self.end_pos, shape=(1, ), dtype=np.float32)
         # Set the seed. This is only used for the final (reach goal) reward.
         self.seed(config.worker_index * config.num_workers)
 
@@ -96,19 +96,39 @@ class SimpleCorridor(gym.Env):
 
 class CustomModel(TFModelV2):
     """Example of a keras custom model that just delegates to an fc-net."""
-
     def __init__(self, obs_space, action_space, num_outputs, model_config,
-                 name):
-        super(CustomModel, self).__init__(obs_space, action_space, num_outputs,
-                                          model_config, name)
-        self.model = FullyConnectedNetwork(obs_space, action_space,
-                                           num_outputs, model_config, name)
+                name):
+        super(CustomModel, self).__init__(obs_space, action_space,
+                                        num_outputs, model_config, name)
+        self.inputs = tf.keras.layers.Input(
+            shape=obs_space.shape, name="observations")
+        layer_1 = tf.keras.layers.Dense(
+            128,
+            name="my_layer1",
+            activation=tf.nn.relu,
+            kernel_initializer=normc_initializer(1.0))(self.inputs)
+        layer_out = tf.keras.layers.Dense(
+            num_outputs,
+            name="my_out",
+            activation=None,
+            kernel_initializer=normc_initializer(0.01))(layer_1)
+        value_out = tf.keras.layers.Dense(
+            1,
+            name="value_out",
+            activation=None,
+            kernel_initializer=normc_initializer(0.01))(layer_1)
+        self.base_model = tf.keras.Model(self.inputs, [layer_out, value_out])
 
     def forward(self, input_dict, state, seq_lens):
-        return self.model.forward(input_dict, state, seq_lens)
+        model_out, self._value_out = self.base_model(input_dict["obs"])
+        return model_out, state
 
     def value_function(self):
-        return self.model.value_function()
+        return tf.reshape(self._value_out, [-1])
+
+    def metrics(self):
+        return {"foo": tf.constant(42.0)}
+
 
 
 class TorchCustomModel(TorchModelV2, nn.Module):
