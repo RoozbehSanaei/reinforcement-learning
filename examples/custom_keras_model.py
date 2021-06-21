@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--run",
     type=str,
-    default="DQN",
+    default="A2C",
     help="The RLlib-registered algorithm to use.")
 parser.add_argument("--stop", type=int, default=200)
 parser.add_argument("--use-vision-network", action="store_true")
