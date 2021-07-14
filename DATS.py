@@ -3,6 +3,7 @@ from mip import Model, MAXIMIZE, CBC, INTEGER, OptimizationStatus, Column
 from itertools import product
 import logging
 from pprint import pprint
+import numpy as np
 
 class truck:
 	def __init__(self, i, _arrival, _serviceTime, _dockingTime, _deadline, _weighedCostCoef,_resourcePersonel, _resourceEquipment, _resourceVehicle ):
@@ -224,7 +225,7 @@ class DATS:
 		# read all constraint and create 2 dicts
 		self.constr_dict_index = {}
 		self.constr_dict_name = {}
-		self.constr_count = 0
+		self.constr_count = -1
 		for c in self.m.constrs:
 			self.constr_count += 1
 			self.constr_dict_index[self.constr_count] = c.name
@@ -235,7 +236,8 @@ class DATS:
 		self.var_dict_index = {}
 		self.var_in_constrs_index = {}
 		self.var_in_constrs_name = {}
-		self.var_count = 0
+		self.var_coeffs_in_constrs_index = {}
+		self.var_count = -1
 		for v in self.m.vars:
 			self.var_count += 1
 			self.var_dict_index[self.var_count] = v.name
@@ -243,9 +245,17 @@ class DATS:
 
 			self.var_in_constrs_name[self.var_count] = [e.name for e in v.column.constrs or [] if (v.column.coeffs) is not None and v.column.constrs is not None]
 			self.var_in_constrs_index[v.name] = [self.constr_dict_name[e.name] for e in v.column.constrs or []]
+			self.var_coeffs_in_constrs_index[v.name] = [e for e in v.column.coeffs or []]
+			
 		#print(self.var_in_constrs_name)
 		#print(self.var_in_constrs_index)
-		self.var_in_constrs_index
+
+		self.adjacency = np.zeros((len(self.var_dict_name), len(self.constr_dict_name)))
+
+		for key in self.var_dict_name:
+			for i in range(len (self.var_in_constrs_index[key])):
+				#print(self.var_in_constrs_index[key][i] , self.var_coeffs_in_constrs_index[key][i])
+				self.adjacency[self.var_dict_name[key]][self.var_in_constrs_index[key][i] ] = self.var_coeffs_in_constrs_index[key][i]
 	
 	def init_vars(self):
 
@@ -370,8 +380,8 @@ class DATS:
 
 	def optimize(self):
 		self.m.max_gap = 0.05
-		self.m.max_seconds = 30
-		status = self.m.optimize(max_seconds=300)
+		#status = self.m.optimize(max_seconds=100)
+		status = self.m.optimize(max_solutions = 1)
 		if status == OptimizationStatus.OPTIMAL:
 			print('optimal solution cost {} found'.format(self.m.objective_value))
 		elif status == OptimizationStatus.FEASIBLE:
