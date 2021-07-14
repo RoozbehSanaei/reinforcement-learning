@@ -18,8 +18,7 @@ class truck:
 		self.resourceVehicle = _resourceVehicle
 
 class DATS_instance:
-	def __init__(self, datfilename ):
-		self.m_fname = datfilename
+	def __init__(self ):
 		self.m_nbDocks = -1
 		self.m_nbTrucks = -1
 		self.m_nbTF = -1
@@ -39,106 +38,6 @@ class DATS_instance:
 		self.m_ResourceVehicle = [[]]
 
 		self.trucks = []
-
-
-
-	def parse(self):
-		f = open(self.m_fname, "r")
-		while 1:
-			line = f.readline()
-			if "end{Tasks}" in line:
-				break
-
-			if 'begin{nbTrucks}' in line:
-				self.m_nbTrucks = int(f.readline())
-				self.m_nbTrucks += 1
-
-			if 'begin{nbDocks}' in line:
-				self.m_nbDocks = int(f.readline())
-
-			if 'begin{nbTF}' in line:
-				self.m_nbTF = int(f.readline())
-
-			if 'begin{nbScenarios}' in line:
-				self.m_nbScenarios = int(f.readline())				
-				
-
-			if 'begin{nbResourcePersonel}' in line:
-				self.m_nbResourcePersonel = int(f.readline())				
-
-			if 'begin{nbResourceEquipment}' in line:
-				self.m_nbResourceEquipment = int(f.readline())				
-
-			if 'begin{nbResourceVehicule}' in line:
-				self.m_nbResourceVehicule = int(f.readline())				
-
-			if 'begin{Tasks}' in line:
-				self.m_ServiceTime = [[] for i in range(self.m_nbTrucks)]
-				self.m_ResourcePersonel = [[] for i in range(self.m_nbTrucks)]
-				self.m_ResourceEquipments = [[] for i in range(self.m_nbTrucks)]
-				self.m_ResourceVehicle = [[] for i in range(self.m_nbTrucks)]
-
-				self.m_Arrival.append(0)
-				self.m_Deadline.append(self.m_nbTF)
-				self.m_DockingTime.append(0)
-				self.m_WeighedCostCoef.append(0)
-
-				for s in range(self.m_nbScenarios):
-					self.m_ServiceTime[0].append(0)
-					self.m_ResourcePersonel[0].append(0)
-					self.m_ResourceEquipments[0].append(0)
-					self.m_ResourceVehicle[0].append(0)
-
-
-				for i in range(1, self.m_nbTrucks):
-					line = f.readline()
-					vals = line.split()
-					self.m_Arrival.append(int(vals[1]))
-					self.m_Deadline.append(int(vals[2]))
-					self.m_DockingTime.append(int(vals[3]))
-					self.m_WeighedCostCoef.append(int(vals[4]))
-					
-					cntr = 4
-					for s in range(self.m_nbScenarios):
-						cntr +=1
-						self.m_ServiceTime[i].append(int(vals[cntr]))
-						cntr +=1
-						self.m_ResourcePersonel[i].append(int(vals[cntr]))
-						cntr +=1
-						self.m_ResourceEquipments[i].append(int(vals[cntr]))
-						cntr +=1
-						self.m_ResourceVehicle[i].append(int(vals[cntr]))
-						
-
-					trc = truck (i, self.m_Arrival[i], self.m_ServiceTime[i], self.m_DockingTime[i], self.m_Deadline[i], self.m_WeighedCostCoef[i], \
-						self.m_ResourcePersonel[i], self.m_ResourceVehicle[i], self.m_ServiceTime[i])
-					self.trucks.append(trc)
-				# 		//trc.arrivalTime = m_Arrival[i];
-				# 		//trc.departureTime = m_Deadline[i];
-				# 		//trc.serviceTime = m_ServiceTime[i];
-				# 		//trc.dockingTime = m_DockingTime[i];
-				# 		//trc.id = i;
-
-				# 		//trucks_by_arrivalTime.insert(pair<int, truck>(m_Arrival[i], trc));
-				# 		//trucks_by_departureTime.insert(pair<int, truck>(m_Deadline[i], trc));
-				# 		//trucks_by_serviceTime.i nsert(pair<int, truck>(m_ServiceTime[i], trc));
-				# 		//trucks_by_dockingTime.insert(pair<int, truck>(m_DockingTime[i], trc));
-				# 		//trucks_by_weightedCostCoef.insert(pair<int, truck>(m_WeighedCostCoef[i], trc));
-				# 		//trucks_by_DockingPlusServiceTime_less.insert(pair<int, truck>(m_DockingTime[i]+ m_ServiceTime[i], trc));
-				# 		//trucks_by_DockingPlusServiceTime_more.insert(pair<int, truck>(m_DockingTime[i] + m_ServiceTime[i], trc));
-				# 		//trucks_by_arrivalPlusServicePlusDockingTime.insert(pair<int, truck>(m_Arrival[i] + m_DockingTime[i] + m_ServiceTime[i], trc));
-
-				# 		//ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-				# 	}
-				# }
-				
-
-
-
-
-
-		return 
-
 
 
 	def isVariableDefined(self,  i,  j,  t,  s):
@@ -173,54 +72,12 @@ class DATS_instance:
 
 
 
-
-
-	def getArrival(self):
-		return self.m_Arrival
-
-	def getDeadline(self):
-		return self.m_Deadline	
-
-	def getDockingTime(self):
-		return self.m_DockingTime
-
-	def getWeightedCostCoef(self):
-		return self.m_WeighedCostCoef
-	#get 2D 
-	def getProcessingTime(self):
-		return self.m_ServiceTime
-
-	def getRequiredResourcePersonel(self):
-		return self.m_ResourcePersonel
-
-	def getRequiredResourceEquipments(self):
-		return self.m_ResourceEquipments
-
-	def getRequiredResourceVehicle(self):
-		return self.m_ResourceVehicle
-
-	#get scalars
-
-	def get_nbTrucks(self):
-		return self.m_nbTrucks
-
-
-	def get_nbDocks(self):
-		return self.m_nbDocks
-
-	def get_nbTF(self):
-		return self.m_nbTF
-
-	def get_nbScenarios(self):
-		return self.m_nbScenarios
-
-
 class DATS:
 	def __init__(self, _inst, lpfile, modelname):
 		
 		self.inst = _inst
-		self.m = Model("DATS")
-		self.m.read('Ok.lp')
+		self.m = Model(modelname)
+		self.m.read(lpfile)
 
 		# read all constraint and create 2 dicts
 		self.constr_dict_index = {}
@@ -286,98 +143,6 @@ class DATS:
 							#self.varnames.append("x(" + str(i) + ")(" + str(j) + ")(" + str(k) + ")(" + str(t) + ")")
 							#self.var_dict['']
 
-
-
-
-	def build_model(self, export_lp = False):
-		
-
-		self.s = 0
-	 	#	flow conservation at existing nodes
-
-		#for i in self.I:
-		#	self.m += xsum(self.x[j][i][k][t] for  j in self.J0 for  k in self.K for t in self.T if self.inst.isVariableDefined(i,  j,  t,  0 ) and i != j)  + self.z[i] == 1 , "rng1(" + str(i)+ ")"
-		print("RNG1")
-		for i in self.I:
-			expr =  self.z[i] 
-			for j,k,t in product(self.J0, self.K, self.T):
-				if self.is_var[i][j][t] and i != j:
-					expr = expr + self.x[i][j][k][t] 
-			expr = expr == 1
-			self.m += expr , "rng1(" + str(i)+ ")"
-
-		
-		print("RNG2")
-		for i in self.I:
-			self.m += xsum(self.x[i][j][k][t] for  j in self.J0 for  k in self.K for t in self.T if self.is_var[i][j][t] and i != j)   == 1, "rng2(" + str(i)+ ")"
-
-		# # *	outgoing  + z  == 1
-		# # *	incomming  + z  == 1
-		print("RNG3")
-		for k in self.K:
-			self.m += xsum(self.x[0][j][k][t] for  j in self.J  for t in self.T if self.is_var[0][j][t] )  + self.x[0][0][k][0] == 1, "rng3(" + str(k)+ ")"
-		# for  k in self.K:
-		# 	expr =  self.x[0][0][k][0]
-		# 	for j in self.J:
-		# 		for t in self.T:
-		# 			if self.inst.isVariableDefined(0,  j,  t,  0 ) :
-		# 				expr = expr + self.x[0][j][k][t]
-		# 	expr = expr == 1
-		# 	self.m += expr , "rng3(" + str(i)+ ")"
-		print("RNG4")
-		for k in self.K:
-			self.m += xsum(self.x[i][0][k][t] for  j in self.J  for t in self.T if self.is_var[i][0][t] )  + self.x[0][0][k][0] == 1, "rng4(" + str(k)+ ")"
-		
-		print("RNG5")					
-		# *	X	<	nextX
-		for k, i, j, t in product(self.K, self.I0, self.J, self.T):
-			if self.is_var[i][j][t] and j!=i:
-				flag = False
-				for l in self.I0:
-				 	if ((l != i or l == 0) and j != l):
-				 		if l == 0:
-				 			tt = t + self.ServiceTime[j][self.s] + self.DockingTime[j]
-				 			expr = expr +  self.x[j][l][k][tt]
-				 			flag = True
-				# 		else:
-		
-				# 			idx = max([t, self.inst.m_Arrival[l], self.inst.m_Arrival[j] + self.inst.m_ServiceTime[j][self.s] + self.inst.m_DockingTime[j], \
-				# 					t + self.inst.m_ServiceTime[j][self.s] + self.inst.m_DockingTime[j] ])
-		
-				# 			for  tt  in range(idx,  self.inst.m_nbTF):
-				# 				if self.is_var[j][l][tt] :
-				# 					expr =  expr + self.x[j][l][k][tt]
-				# 					flag = True
-				# 					break
-				if flag :
-					self.m =   self.x[i][j][k][t] - expr <= 0#,  "rng5(" + str(i) + ")(" + str(j) + ")(" + str(t) + ")"
-				else:
-					self.x[i][j][k][t].ub = 0
-		print("RNG6")					
-		# *	Variable Fixing
-		cntr = 0
-		for k, j in product(self.K, self.J):
-			for t in range( self.inst.m_Arrival[j] + 1,  self.inst.m_nbTF):
-				if self.is_var[0][j][t]:
-					self.x[0][j][k][t].ub = 0
-					cntr += 1
-
-
-		#objective function
-
-		self.obj = xsum( self.z[j] *  inst.getWeightedCostCoef()[j] * 100 for j in self.J)
-
-		for k,i,j,t in product(self.K, self.I0, self.J, self.T):
-			if self.inst.isVariableDefined(i, j, t, 0):
-				self.obj = self.obj + self.x[i][j][k][t] * (t - inst.getArrival()[j]) * inst.getWeightedCostCoef()[j]
-
-		
-
-		self.m.objective = minimize(self.obj)
-
-		if export_lp:
-			self.m.write('model.lp')
-
 	def optimize(self):
 		self.m.max_gap = 0.05
 		#status = self.m.optimize(max_seconds=100)
@@ -402,7 +167,6 @@ bool getMinMaxTrucks(int& _min, int& _max);
 
 
 
-inst = DATS_instance ("D:\\Work\\projects\\cross_dock_2020\\DATS\\code\\generator\\instances\\RC\\1-Scenario\\tf-16-d-20-tr-65-Sce-1-RC.dat")
-inst.parse()
+inst = DATS_instance ()
 dats = DATS(inst, "Ok.lp", "DATS")
 dats.optimize()
