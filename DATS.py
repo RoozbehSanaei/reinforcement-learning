@@ -1,6 +1,5 @@
 from mip import Model, xsum, BINARY, minimize, ConstrsGenerator, CutPool
 from mip import Model, MAXIMIZE, CBC, INTEGER, OptimizationStatus, Column
-from itertools import product
 import logging
 from pprint import pprint
 import numpy as np
@@ -158,10 +157,6 @@ class DATS:
 			for v in self.m.vars:
 				if abs(v.x) > 1e-6: # only printing non-zeros
 					print('{} : {}'.format(v.name, v.x))
-''''
-bool getMinMaxTrucks(int& _min, int& _max);
-'''''
-
 
 
 
