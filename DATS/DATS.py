@@ -3,6 +3,9 @@ from mip import Model, MAXIMIZE, CBC, INTEGER, OptimizationStatus, Column
 import logging
 from pprint import pprint
 import numpy as np
+import random
+import time 
+import copy
 
 from DATS_instance import *
 
@@ -57,36 +60,82 @@ class DATS:
 				#print(self.var_in_constrs_index[key][i] , self.var_coeffs_in_constrs_index[key][i])
 				self.adjacency[self.var_dict_name_index[key]][self.var_in_constrs_index[key][i] ] = self.var_coeffs_in_constrs_index[key][i]
 	
-	def init_vars(self):
 
-		self.ServiceTime = self.inst.m_ServiceTime
-		self.DockingTime = self.inst.m_DockingTime
+	def uniform_random_clusters(self,  num_clusters):
+		'''Return a random clustering. Each node is assigned to a cluster
+		a equal probability.'''
+
+		choices = list(range(num_clusters))
+		clusters = dict([(i, []) for i in range(num_clusters)])
+
+		for k in self.var_dict_index_name.keys():
+			cluster_choice = random.choice(choices)
+			clusters[cluster_choice].append(k)
+
+		return clusters
+
+
+
+	def solve_fixed_by_cluster(self, model, cluster, sol=None):
+		"""Perform gradient descent on model along coordinates defined by 
+		variables in cluster,  starting from a current solution sol.
 		
-		self.J0 = range (self.inst.m_nbTrucks)
-		self.I0 = range (self.inst.m_nbTrucks)
-		self.J = range (1, self.inst.m_nbTrucks)
-		self.I = range (1, self.inst.m_nbTrucks)
-		self.K = range (self.inst.m_nbDocks)
-		self.T = range (self.inst.m_nbTF)
-		self.S = range (self.inst.m_nbScenarios)
+		Arguments:
+		model: the integer program.
+		cluster: the coordinates to perform gradient descent on.
+		var_dict: mapping node index to node variable name.
+		sol: a dict representing the current solution.
 
-		self.z = [self.m.add_var(var_type=BINARY, name = "z("+ str(i) + ")") for i in range( self.inst.m_nbTrucks)]
-		self.x = [[ [ [ None for t in self.T] for k in self.K] for j in self.J0] for i in self.I0]
-		self.is_var = [[[False for t in self.T] for j in self.J0] for i in self.I0]
+		Returns:
+		new_sol: the new solution.
+		time: the time used to perform the descent.
+		obj: the new objective value.
+		"""
 
-		self.varnames = []
-		self.var_dict = {}
-		for i in self.I0:
-			for j in self.J0:
-				for k in self.K:
-					for t in self.T:
-						if self.inst.isVariableDefined(i, j, t, 0):
-							self.x[i][j][k][t] = self.m.add_var(var_type=BINARY, name = "x(" + str(i) + ")(" + str(j) + ")(" + str(k) + ")(" + str(t) + ")")
-							self.is_var[i][j][t] = True
-							#self.varnames.append("x(" + str(i) + ")(" + str(j) + ")(" + str(k) + ")(" + str(t) + ")")
-							#self.var_dict['']
+		var_starts = []
+		for i in range(len(self.var_dict_name_index)):
+			var = self.var_dict_index_var[i]
+			if i in cluster:
+				var_starts.append((var, sol[i]))
+			else:
+				model += var == sol[i]
+
+		# for k, varname in self.var_dict_index_name.items():
+		# 		# warm start variables in the current coordinate set with the existing solution.
+		# 		model_var = model.var_by_name(varname)
+		# 		if k in cluster:
+		# 			var_starts.append((model_var, sol[k]))
+		# 		else:
+		# 			model += model_var == sol[k]
+
+		# model.start = var_starts
+		model.verbose = False
+		start_time = time.time()
+		model.optimize()
+		end_time = time.time()
+		run_time = end_time - start_time
+		new_sol = np.zeros(len(self.var_dict_name_index))
+
+
+		# for k, var in self.var_dict_index_name.items():
+		# 	var = model.var_by_name(varname)
+		# 	try:
+		# 		new_sol.append( round(var.x))
+		# 	except:
+		# 		return sol, run_time, -1
+
+		for i in range(len(self.var_dict_name_index)):
+			var = self.var_dict_index_var[i]
+			try:
+				new_sol[i] =  round(var.x)
+			except:
+				return sol, run_time, -1
+
+
+		return new_sol, run_time, model.objective_value
 
 	def optimize(self):
+		sol = []
 		self.m.max_gap = 0.05
 		#status = self.m.optimize(max_seconds=100)
 		status = self.m.optimize(max_solutions = 1)
@@ -99,8 +148,11 @@ class DATS:
 		if status == OptimizationStatus.OPTIMAL or status == OptimizationStatus.FEASIBLE:
 			print('solution:')
 			for v in self.m.vars:
-				if abs(v.x) > 1e-6: # only printing non-zeros
-					print('{} : {}'.format(v.name, v.x))
+				#if abs(v.x) > 1e-6: # only printing non-zeros
+					#print('{} : {}'.format(v.name, v.x))
+				sol.append(round(v.x))
+		return sol
+
 
 
 
@@ -108,4 +160,7 @@ class DATS:
 
 inst = DATS_instance ()
 dats = DATS(inst, "Ok.lp", "DATS")
-dats.optimize()
+clusters = dats.uniform_random_clusters(4)
+sol = dats.optimize()
+dats.solve_fixed_by_cluster(dats.m.copy(), clusters[0], sol )
+
