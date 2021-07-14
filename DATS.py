@@ -1,7 +1,8 @@
 from mip import Model, xsum, BINARY, minimize, ConstrsGenerator, CutPool
-from mip import Model, MAXIMIZE, CBC, INTEGER, OptimizationStatus
+from mip import Model, MAXIMIZE, CBC, INTEGER, OptimizationStatus, Column
 from itertools import product
 import logging
+from pprint import pprint
 
 class truck:
 	def __init__(self, i, _arrival, _serviceTime, _dockingTime, _deadline, _weighedCostCoef,_resourcePersonel, _resourceEquipment, _resourceVehicle ):
@@ -214,11 +215,42 @@ class DATS_instance:
 
 
 class DATS:
-	def __init__(self, _inst):
+	def __init__(self, _inst, lpfile, modelname):
+		
 		self.inst = _inst
 		self.m = Model("DATS")
-		self.init_vars()
+		self.m.read('Ok.lp')
+
+		# read all constraint and create 2 dicts
+		self.constr_dict_index = {}
+		self.constr_dict_name = {}
+		self.constr_count = 0
+		for c in self.m.constrs:
+			self.constr_count += 1
+			self.constr_dict_index[self.constr_count] = c.name
+			self.constr_dict_name[c.name] = self.constr_count
+
+		self.var_dict = {}
+		self.var_dict_name = {}
+		self.var_dict_index = {}
+		self.var_in_constrs_index = {}
+		self.var_in_constrs_name = {}
+		self.var_count = 0
+		for v in self.m.vars:
+			self.var_count += 1
+			self.var_dict_index[self.var_count] = v.name
+			self.var_dict_name[v.name] = self.var_count
+
+			self.var_in_constrs_name[self.var_count] = [e.name for e in v.column.constrs or [] if (v.column.coeffs) is not None and v.column.constrs is not None]
+			self.var_in_constrs_index[v.name] = [self.constr_dict_name[e.name] for e in v.column.constrs or []]
+		#print(self.var_in_constrs_name)
+		#print(self.var_in_constrs_index)
+		self.var_in_constrs_index
+	
 	def init_vars(self):
+
+		self.ServiceTime = self.inst.m_ServiceTime
+		self.DockingTime = self.inst.m_DockingTime
 		
 		self.J0 = range (self.inst.m_nbTrucks)
 		self.I0 = range (self.inst.m_nbTrucks)
@@ -243,6 +275,8 @@ class DATS:
 							self.is_var[i][j][t] = True
 							#self.varnames.append("x(" + str(i) + ")(" + str(j) + ")(" + str(k) + ")(" + str(t) + ")")
 							#self.var_dict['']
+
+
 
 
 	def build_model(self, export_lp = False):
@@ -290,21 +324,21 @@ class DATS:
 			if self.is_var[i][j][t] and j!=i:
 				flag = False
 				for l in self.I0:
-					if ((l != i or l == 0) and j != l):
-						if l == 0:
-							tt = t + self.inst.m_ServiceTime[j][self.s] + self.inst.m_DockingTime[j]
-							expr = expr +  self.x[j][l][k][tt]
-							flag = True
-						else:
+				 	if ((l != i or l == 0) and j != l):
+				 		if l == 0:
+				 			tt = t + self.ServiceTime[j][self.s] + self.DockingTime[j]
+				 			expr = expr +  self.x[j][l][k][tt]
+				 			flag = True
+				# 		else:
 		
-							idx = max([t, self.inst.m_Arrival[l], self.inst.m_Arrival[j] + self.inst.m_ServiceTime[j][self.s] + self.inst.m_DockingTime[j], \
-									t + self.inst.m_ServiceTime[j][self.s] + self.inst.m_DockingTime[j] ])
+				# 			idx = max([t, self.inst.m_Arrival[l], self.inst.m_Arrival[j] + self.inst.m_ServiceTime[j][self.s] + self.inst.m_DockingTime[j], \
+				# 					t + self.inst.m_ServiceTime[j][self.s] + self.inst.m_DockingTime[j] ])
 		
-							for  tt  in range(idx,  self.inst.m_nbTF):
-								if self.is_var[j][l][tt] :
-									expr =  expr + self.x[j][l][k][tt]
-									flag = True
-									break
+				# 			for  tt  in range(idx,  self.inst.m_nbTF):
+				# 				if self.is_var[j][l][tt] :
+				# 					expr =  expr + self.x[j][l][k][tt]
+				# 					flag = True
+				# 					break
 				if flag :
 					self.m =   self.x[i][j][k][t] - expr <= 0#,  "rng5(" + str(i) + ")(" + str(j) + ")(" + str(t) + ")"
 				else:
@@ -336,6 +370,7 @@ class DATS:
 
 	def optimize(self):
 		self.m.max_gap = 0.05
+		self.m.max_seconds = 30
 		status = self.m.optimize(max_seconds=300)
 		if status == OptimizationStatus.OPTIMAL:
 			print('optimal solution cost {} found'.format(self.m.objective_value))
@@ -359,6 +394,5 @@ bool getMinMaxTrucks(int& _min, int& _max);
 
 inst = DATS_instance ("D:\\Work\\projects\\cross_dock_2020\\DATS\\code\\generator\\instances\\RC\\1-Scenario\\tf-16-d-20-tr-65-Sce-1-RC.dat")
 inst.parse()
-dats = DATS(inst)
-dats.build_model(True)
+dats = DATS(inst, "Ok.lp", "DATS")
 dats.optimize()
