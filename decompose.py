@@ -317,7 +317,7 @@ def gradient_descent(model, cluster, var_dict, sol):
 # In[8]:
 
 
-#G, P, adj, nbVar  = generateInstance(100, 100, g_type='barabasi_albert', edge=5)
+G, P, adj, nbVar  = generateInstance(100, 100, g_type='barabasi_albert', edge=5)
 
 
 # For random decompositions, we randomly decompose the 100 nodes into 5 equally-sized subsets. Iteratively, we apply 10 decompositions in total and for each subproblem, we impose a time limit of 1 second.
@@ -326,7 +326,7 @@ def gradient_descent(model, cluster, var_dict, sol):
 
 
 start_time = time.time()
-#t, _, _, _, _ = LNS(P, 5, 10, time_limit=1, verbose=True)
+t, _, _, _, _ = LNS(P, 5, 10, time_limit=1, verbose=True)
 end_time = time.time()
 #total_t = end_time - start_time
 #print('solver time: ', t)
