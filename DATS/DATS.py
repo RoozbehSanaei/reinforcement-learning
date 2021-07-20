@@ -6,18 +6,80 @@ import numpy as np
 import random
 import time 
 import copy
+import os
 
-from DATS_instance import *
+class truck:
+	def __init__(self, i, _arrival, _serviceTime, _dockingTime, _deadline, _weighedCostCoef,_resourcePersonel, _resourceEquipment, _resourceVehicle ):
+		self.arrivalTime = _arrival
+		self.dockingTime = _dockingTime
+		self.departureTime = _deadline
+		self.weightedCostCoef = _weighedCostCoef
+
+		self.serviceTime = _serviceTime
+		self.resourcePersonel = _resourcePersonel
+		self.resourceEquipments = _resourceEquipment
+		self.resourceVehicle = _resourceVehicle
 
 
+class DATS_instance:
+	def __init__(self ):
+		self.m_nbDocks = -1
+		self.m_nbTrucks = -1
+		self.m_nbTF = -1
+		self.m_nbScenarios = -1
+		self.m_nbResourcePersonel = -1
+		self.m_nbResourceEquipment  = -1
+		self.m_nbResourceVehicule = -1
+		self.m_Arrival = []
+		self.m_Deadline = []
+		self.m_DockingTime = []
+		self.m_WeighedCostCoef = []
+
+		# 2D arrays
+		self.m_ServiceTime = [[]]
+		self.m_ResourcePersonel = [[]]
+		self.m_ResourceEquipments = [[]]
+		self.m_ResourceVehicle = [[]]
+
+		self.trucks = []
+
+
+	def isVariableDefined(self,  i,  j,  t,  s):
+
+		if i == 0 and j >= 1  and t >= self.m_Arrival[j] + 1:
+			return False
+		if j == 0 and i >= 1 and t > self.m_Deadline[i]:
+			return False
+
+		if i == j and i > 0 and j > 0:
+			return False
+		if i > 0:
+			if t > self.m_Deadline[j]:
+				return False
+			#if (t > m_Deadline()[i])
+			#    return False;
+			if t < self.m_Arrival[j]:
+				return False
+			if t < self.m_Arrival[i] + self.m_ServiceTime[i][s] + self.m_DockingTime[i]: 
+				return False
+			if t + self.m_ServiceTime[j][s] + self.m_DockingTime[j] > self.m_Deadline[j]:
+				return False
+			if t + self.m_ServiceTime[j][s] + self.m_DockingTime[j] > self.get_nbTF() - 1:
+				return False
+		
+		else:
+			if t > self.m_Deadline[j] or t < self.m_Arrival[j] or t + self.m_ServiceTime[j][s] + self.m_DockingTime[j] > self.m_Deadline[j] \
+			or t + self.m_ServiceTime[j][s] + self.m_DockingTime[j] > self.m_nbTF - 1:
+				return False
+		return True
 
 
 class DATS:
-	def __init__(self, _inst, lpfile, modelname):
-		
+	def __init__(self, _inst):
+		global model
 		self.inst = _inst
-		self.m = Model(modelname)
-		self.m.read(lpfile)
+		self.m = model
+
 
 		# read all constraint and create 2 dicts
 		self.constr_dict_index_name = {}
@@ -59,8 +121,8 @@ class DATS:
 			for i in range(len (self.var_in_constrs_index[key])):
 				#print(self.var_in_constrs_index[key][i] , self.var_coeffs_in_constrs_index[key][i])
 				self.adjacency[self.var_dict_name_index[key]][self.var_in_constrs_index[key][i] ] = self.var_coeffs_in_constrs_index[key][i]
-	
 
+	
 	def uniform_random_clusters(self,  num_clusters):
 		'''Return a random clustering. Each node is assigned to a cluster
 		a equal probability.'''
@@ -138,7 +200,7 @@ class DATS:
 		sol = []
 		self.m.max_gap = 0.05
 		#status = self.m.optimize(max_seconds=100)
-		status = self.m.optimize(max_solutions = 1)
+		status = self.m.optimize(max_solutions = 10000)
 		if status == OptimizationStatus.OPTIMAL:
 			print('optimal solution cost {} found'.format(self.m.objective_value))
 		elif status == OptimizationStatus.FEASIBLE:
@@ -154,13 +216,12 @@ class DATS:
 		return sol
 
 
+model = Model("DATS")
+model.read("DATS/n15_a75_c_w3_L1.lp")
 
 
-
-
-inst = DATS_instance ()
-dats = DATS(inst, "Ok.lp", "DATS")
+inst = DATS_instance()
+dats = DATS(inst)
 clusters = dats.uniform_random_clusters(4)
 sol = dats.optimize()
 dats.solve_fixed_by_cluster(dats.m.copy(), clusters[0], sol )
-
