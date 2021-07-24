@@ -75,10 +75,10 @@ class DATS_instance:
 
 
 class DATS:
-	def __init__(self, _inst):
-		global model
+	def __init__(self, _inst,model_name,lp_file_name):
 		self.inst = _inst
-		self.m = model
+		self.m = Model(model_name)
+		self.m.read(lp_file_name)
 
 
 		# read all constraint and create 2 dicts
@@ -200,7 +200,7 @@ class DATS:
 		sol = []
 		self.m.max_gap = 0.05
 		#status = self.m.optimize(max_seconds=100)
-		status = self.m.optimize(max_solutions = 10000)
+		status = self.m.optimize(max_solutions = 1)
 		if status == OptimizationStatus.OPTIMAL:
 			print('optimal solution cost {} found'.format(self.m.objective_value))
 		elif status == OptimizationStatus.FEASIBLE:
@@ -213,15 +213,13 @@ class DATS:
 				#if abs(v.x) > 1e-6: # only printing non-zeros
 					#print('{} : {}'.format(v.name, v.x))
 				sol.append(round(v.x))
-		return sol
+		return np.array(sol), self.m.objective_value
 
-
-model = Model("DATS")
-model.read("DATS/n15_a75_c_w3_L1.lp")
-
-
+'''
 inst = DATS_instance()
-dats = DATS(inst)
+dats = DATS(inst,"DATS","DATS/polska_01.lp")
 clusters = dats.uniform_random_clusters(4)
-sol = dats.optimize()
-dats.solve_fixed_by_cluster(dats.m.copy(), clusters[0], sol )
+sol,obj = dats.optimize()
+new_sol, run_time, objective_value = dats.solve_fixed_by_cluster(dats.m.copy(), clusters[0], sol )
+print(new_sol, 0, objective_value)
+'''

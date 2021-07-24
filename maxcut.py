@@ -25,7 +25,8 @@ from ray.rllib.models import ModelCatalog
 from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.models.tf.fcnet import FullyConnectedNetwork
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
-from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
+#from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
+from ray.rllib.models.torch.visionnet import VisionNetwork as TorchFC
 from ray.rllib.utils.framework import try_import_tf, try_import_torch
 from ray.rllib.utils.test_utils import check_learning_achieved
 from MAXCUT.maximum_cut import *
@@ -42,7 +43,7 @@ parser.add_argument(
 parser.add_argument(
     "--framework",
     choices=["tf", "tf2", "tfe", "torch"],
-    default="tf2",
+    default="torch",
     help="The DL framework specifier.")
 parser.add_argument(
     "--as-test",
@@ -88,6 +89,7 @@ class MaximumCut(gym.Env):
         self.var_dict = generate_var_dict(self.mip_model)
         self.sol, self.start_obj = initialize_solution(self.var_dict, self.mip_model)
         self.state = np.concatenate((self.solution_list()[:,np.newaxis],self.adj),axis=1)
+        self.state = self.state[:,:,np.newaxis]
 
         self.action_space = MultiDiscrete(np.ones(self.nbVar)*self.num_clusters)
         self.observation_space =  Box(low=-np.ones(self.state.shape),high=np.ones(self.state.shape))
@@ -196,6 +198,7 @@ class CustomModel(TFModelV2):
         self.base_model = tf.keras.Model(self.inputs, [layer_out, value_out])
 
     def forward(self, input_dict, state, seq_lens):
+        input_dict["obs"] = tf.reshape(input_dict["obs"],[-1,input_dict["obs"].shape[2]])
         model_out, self._value_out = self.base_model(input_dict["obs"])
         return model_out, state
 
@@ -222,7 +225,6 @@ class TorchCustomModel(TorchModelV2, nn.Module):
     def forward(self, input_dict, state, seq_lens):
         input_dict["obs"] = input_dict["obs"].float()
         fc_out, _ = self.torch_sub_model(input_dict, state, seq_lens)
-        fc_out.data[0][0]=0.2
         return fc_out, []
 
     def value_function(self):

@@ -88,6 +88,13 @@ def get_filter_config(shape):
         [32, [4, 4], 2],
         [256, [11, 11], 1],
     ]
+
+    filters_34x49 = [
+        [16, [4, 4], 2],
+        [32, [4, 4], 2],
+        [256, [9, 9], 1],
+    ]
+
     if len(shape) in [2, 3] and (shape[:2] == [240, 320]
                                  or shape[1:] == [240, 320]):
         return filters_240x320x
@@ -97,6 +104,9 @@ def get_filter_config(shape):
     elif len(shape) in [2, 3] and (shape[:2] == [42, 42]
                                    or shape[1:] == [42, 42]):
         return filters_42x42
+    elif len(shape) in [2, 3] and (shape[:2] == [34, 49]
+                                   or shape[1:] == [42, 42]):
+        return filters_34x49
     else:
         raise ValueError(
             "No default configuration for obs shape {}".format(shape) +

@@ -291,7 +291,7 @@ TARGET_UPDATE = 10
 # which is the result of a clamped and down-scaled render buffer in get_screen()
 
 # Get number of actions from gym action space
-n_actions = env.action_space.n
+n_actions = env.n_actions
 
 policy_net = DQN(env.state.shape[0], env.state.shape[1], n_actions).to(device)
 target_net = DQN(env.state.shape[0], env.state.shape[1], n_actions).to(device)

@@ -53,7 +53,7 @@ def cost(DSM,  cluster_matrix, pow_cc=1):
 
 
 
-class Clustering_Environment(gym.Env):
+class Clustering_Environment():
     """Four rooms game environment as described in paper http://www-anw.cs.umass.edu/~barto/courses/cs687/Sutton-Precup-Singh-AIJ99.pdf"""
     environment_name = "Four Rooms"
 
@@ -92,7 +92,7 @@ class Clustering_Environment(gym.Env):
         #self.step_reward_for_not_achieving_goal = -1.0
         #self.state_only_dimension = 1
         #self.num_possible_states = self.grid_height * self.grid_width
-        self.action_space = spaces.Discrete((self.N+1)*(self.N+1))
+        self.n_actions =(self.N+1)*(self.N+1)
         self.id = "Clustering"
         self.reward_threshold = 0.0
         self.trials = 100
