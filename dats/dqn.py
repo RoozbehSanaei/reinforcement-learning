@@ -304,7 +304,7 @@ def optimize_model(thresh=0.5):
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch)[non_final_mask]
+    state_action_values = policy_net(state_batch)[non_final_mask]*action_batch[non_final_mask]
 
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
@@ -312,7 +312,7 @@ def optimize_model(thresh=0.5):
     # This is merged based on the mask, such that we'll have either the expected
     # state value or 0 in case the state was final.
     next_state_values = torch.zeros(config["BATCH_SIZE"], device=device)
-    next_state_values = (target_net(non_final_next_states)>thresh).int()
+    next_state_values = target_net(non_final_next_states)*(target_net(non_final_next_states)>thresh).int()
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * config["GAMMA"]) + reward_batch.unsqueeze(1).repeat(1, state_action_values.shape[1])
 
