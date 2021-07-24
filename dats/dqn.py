@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import gym
 import math
 import random
 import numpy as np
@@ -23,13 +22,17 @@ config = {
 "verbose": True,
 "time_limit": 4,
 "num_clusters": 5,
-"random_clusters_likelihood": 0.2,
+"random_clusters_likelihood": 1,
 "done_likelihood": 0.001,
 "model_name": "DATS",
 "lp_file_name": "DATS/polska_01.lp",
-"thresh": 0.5
-}
-
+"thresh": 0.5,
+"BATCH_SIZE": 128,
+"GAMMA": 0.999,
+"EPS_START" : 0.9,
+"EPS_END": 0.05,
+"EPS_DECAY": 200,
+"TARGET_UPDATE": 10}
 
 env = DATS_Environment(config)
 
@@ -73,8 +76,8 @@ class ReplayMemory(object):
         """Save a transition"""
         self.memory.append(Transition(*args))
 
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+    def sample(self, BATCH_SIZE):
+        return random.sample(self.memory, BATCH_SIZE)
 
     def __len__(self):
         return len(self.memory)
@@ -93,9 +96,9 @@ class ReplayMemory(object):
 #
 # Our aim will be to train a policy that tries to maximize the discounted,
 # cumulative reward
-# :math:`R_{t_0} = \sum_{t=t_0}^{\infty} \gamma^{t - t_0} r_t`, where
+# :math:`R_{t_0} = \sum_{t=t_0}^{\infty} \config["GAMMA"]^{t - t_0} r_t`, where
 # :math:`R_{t_0}` is also known as the *return*. The discount,
-# :math:`\gamma`, should be a constant between :math:`0` and :math:`1`
+# :math:`\config["GAMMA"]`, should be a constant between :math:`0` and :math:`1`
 # that ensures the sum converges. It makes rewards from the uncertain far
 # future less important for our agent than the ones in the near future
 # that it can be fairly confident about.
@@ -116,12 +119,12 @@ class ReplayMemory(object):
 # For our training update rule, we'll use a fact that every :math:`Q`
 # function for some policy obeys the Bellman equation:
 #
-# .. math:: Q^{\pi}(s, a) = r + \gamma Q^{\pi}(s', \pi(s'))
+# .. math:: Q^{\pi}(s, a) = r + \config["GAMMA"] Q^{\pi}(s', \pi(s'))
 #
 # The difference between the two sides of the equality is known as the
 # temporal difference error, :math:`\delta`:
 #
-# .. math:: \delta = Q(s, a) - (r + \gamma \max_a Q(s', a))
+# .. math:: \delta = Q(s, a) - (r + \config["GAMMA"] \max_a Q(s', a))
 #
 # To minimise this error, we will use the `Huber
 # loss <https://en.wikipedia.org/wiki/Huber_loss>`__. The Huber loss acts
@@ -195,8 +198,8 @@ class DQN(nn.Module):
 # -  ``select_action`` - will select an action accordingly to an epsilon
 #    greedy policy. Simply put, we'll sometimes use our model for choosing
 #    the action, and sometimes we'll just sample one uniformly. The
-#    probability of choosing a random action will start at ``EPS_START``
-#    and will decay exponentially towards ``EPS_END``. ``EPS_DECAY``
+#    probability of choosing a random action will start at ``config["EPS_START"]``
+#    and will decay exponentially towards ``config["EPS_END"]``. ``config["EPS_DECAY"]``
 #    controls the rate of the decay.
 # -  ``plot_durations`` - a helper for plotting the durations of episodes,
 #    along with an average over the last 100 episodes (the measure used in
@@ -205,12 +208,6 @@ class DQN(nn.Module):
 #    episode.
 #
 
-BATCH_SIZE = 128
-GAMMA = 0.999
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
-TARGET_UPDATE = 10
 
 # Get screen size so that we can initialize layers correctly based on shape
 # returned from AI gym. Typical dimensions at this point are close to 3x40x90
@@ -235,8 +232,8 @@ steps_done = 0
 def select_action(state,thresh=0.5):
     global steps_done
     sample = random.random()
-    eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
+    eps_threshold = config["EPS_END"] + (config["EPS_START"] - config["EPS_END"]) * \
+        math.exp(-1. * steps_done / config["EPS_DECAY"])
     steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
@@ -287,9 +284,9 @@ def plot_durations():
 #
 
 def optimize_model(thresh=0.5):
-    if len(memory) < BATCH_SIZE:
+    if len(memory) < config["BATCH_SIZE"]:
         return
-    transitions = memory.sample(BATCH_SIZE)
+    transitions = memory.sample(config["BATCH_SIZE"])
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). This converts batch-array of Transitions
     # to Transition of batch-arrays.
@@ -311,13 +308,13 @@ def optimize_model(thresh=0.5):
 
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
-    # on the "older" target_net; selecting their best reward with max(1)[0].
+    # on the "older" target_net; selecting their (target_net(non_final_next_states)>thresh).int()
     # This is merged based on the mask, such that we'll have either the expected
     # state value or 0 in case the state was final.
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
+    next_state_values = torch.zeros(config["BATCH_SIZE"], device=device)
     next_state_values = (target_net(non_final_next_states)>thresh).int()
     # Compute the expected Q values
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch.unsqueeze(1).repeat(1, state_action_values.shape[1])
+    expected_state_action_values = (next_state_values * config["GAMMA"]) + reward_batch.unsqueeze(1).repeat(1, state_action_values.shape[1])
 
     # Compute Huber loss
     criterion = nn.SmoothL1Loss()
@@ -374,19 +371,6 @@ for i_episode in range(num_episodes):
             plot_durations()
             break
     # Update the target network, copying all weights and biases in DQN
-    if i_episode % TARGET_UPDATE == 0:
+    if i_episode % config["TARGET_UPDATE"] == 0:
         target_net.load_state_dict(policy_net.state_dict())
 
-
-######################################################################
-# Here is the diagram that illustrates the overall resulting data flow.
-#
-# .. figure:: /_static/img/reinforcement_learning_diagram.jpg
-#
-# Actions are chosen either randomly or based on a policy, getting the next
-# step sample from the gym environment. We record the results in the
-# replay memory and also run optimization step on every iteration.
-# Optimization picks a random batch from the replay memory to do training of the
-# new policy. "Older" target_net is also used in optimization to compute the
-# expected Q values; it is updated occasionally to keep it current.
-#
