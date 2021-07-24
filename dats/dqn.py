@@ -27,8 +27,7 @@ config = {
 "done_likelihood": 0.001,
 "model_name": "DATS",
 "lp_file_name": "DATS/polska_01.lp",
-"thresh": 0.5,
-"max_k": 5
+"thresh": 0.5
 }
 
 
@@ -287,7 +286,7 @@ def plot_durations():
 # simplicity.
 #
 
-def optimize_model(max_k=5):
+def optimize_model(thresh=0.5):
     if len(memory) < BATCH_SIZE:
         return
     transitions = memory.sample(BATCH_SIZE)
@@ -304,12 +303,11 @@ def optimize_model(max_k=5):
                                                 if s is not None])
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
-
+    reward_batch = torch.cat(batch.reward)[non_final_mask]
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch).topk(max_k).values
+    state_action_values = policy_net(state_batch)[non_final_mask]
 
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
@@ -317,9 +315,9 @@ def optimize_model(max_k=5):
     # This is merged based on the mask, such that we'll have either the expected
     # state value or 0 in case the state was final.
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
-    next_state_values = target_net(non_final_next_states).topk(max_k).values
+    next_state_values = (target_net(non_final_next_states)>thresh).int()
     # Compute the expected Q values
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch.unsqueeze(1).repeat(1, 5)
+    expected_state_action_values = (next_state_values * GAMMA) + reward_batch.unsqueeze(1).repeat(1, state_action_values.shape[1])
 
     # Compute Huber loss
     criterion = nn.SmoothL1Loss()
@@ -370,7 +368,7 @@ for i_episode in range(num_episodes):
         state = next_state
 
         # Perform one step of the optimization (on the policy network)
-        optimize_model(max_k=config["max_k"])
+        optimize_model(thresh=config["thresh"])
         if done:
             episode_durations.append(t + 1)
             plot_durations()
