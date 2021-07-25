@@ -345,16 +345,16 @@ num_episodes = 1000
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     env.reset()
-    state = torch.cuda.FloatTensor(env.state,device=device)[None,None,:,:]
+    state = torch.Tensor(env.state).to(device=device,dtype=torch.float32)[None,None,:,:]
     for t in count():
         # Select and perform an action
         action = select_action(state,thresh=config["thresh"])
         _, reward, done, _ = env.step(action)
-        reward = torch.cuda.FloatTensor([reward], device=device)
+        reward = torch.Tensor([reward]).to(device=device,dtype=torch.float32)
 
         # Observe new state
         if not done:
-            next_state = torch.cuda.FloatTensor(env.state,device=device)[None,None,:,:]
+            next_state = torch.Tensor(env.state).to(device=device,dtype=torch.float32)[None,None,:,:]
         else:
             next_state = None
 
