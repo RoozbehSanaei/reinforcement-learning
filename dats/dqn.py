@@ -3,17 +3,17 @@
 import math
 import random
 import numpy as np
-import matplotlib
+#import matplotlib
 import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
-from PIL import Image
+#from PIL import Image
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import torchvision.transforms as T
+#import torchvision.transforms as T
 import numpy as np
 from DATS_Environment import DATS_Environment
 
