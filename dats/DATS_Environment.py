@@ -6,10 +6,11 @@ import matplotlib as mpl
 
 from matplotlib import pyplot
 from random import randint
-from DATS import DATS, DATS_instance
+from DATS import  DATS_instance
+from DATS_CPLEX  import DATS_CPLEX
 import time
 from collections import namedtuple
-
+import copy
 
 class DATS_Environment():
 
@@ -24,16 +25,17 @@ class DATS_Environment():
 
 
         self.inst = DATS_instance()
-        self.DATS = DATS(self.inst, self.model_name,self.lp_file_name)
+#        self.DATS = DATS(self.inst, self.model_name,self.lp_file_name)#
+        self.DATS_CPLEX = DATS_CPLEX( self.model_name,self.lp_file_name)
         
-        self.mip_model,self.adj,self.var_count = self.DATS.m,self.DATS.adjacency,self.DATS.var_count
+        self.mip_model,self.adj,self.var_count = self.DATS_CPLEX.c,self.DATS_CPLEX.adjacency,self.DATS_CPLEX.get_nbinvars()
         self.mip_model.max_seconds = config["time_limit"]
         self.mip_model.verbose = config["verbose"]
-        self.original_mip_model = self.mip_model.copy()
+        self.original_mip_model = copy.copy(self.mip_model)
 
 
-        self.var_dict = self.DATS.var_dict_index_name
-        self.sol, self.start_obj = self.DATS.optimize()
+        #self.var_dict = self.DATS.var_dict_index_name
+        self.sol, self.start_obj,status = self.DATS_CPLEX.optimize()
 
         
         self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
@@ -66,8 +68,8 @@ class DATS_Environment():
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.mip_model = self.original_mip_model.copy()
-        self.sol, self.start_obj = self.DATS.optimize()
+        self.mip_model = copy.copy(self.original_mip_model)
+        self.sol, self.start_obj, status = self.DATS_CPLEX.optimize()
         self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
         self.next_state = None
         self.reward = None
@@ -90,7 +92,7 @@ class DATS_Environment():
             clusters = self.action_to_clusters(action[0].cpu().detach().numpy())
 
 
-        self.sol, solver_time, obj = self.DATS.solve_fixed_by_cluster(self.mip_model.copy(), clusters[0], self.sol )
+        self.sol, solver_time, obj, stat = self.DATS_CPLEX.solve_fixed_by_cluster(copy.copy(self.mip_model), clusters[0], self.sol )
         
         #self.sol, solver_time, obj = self.DATS.solve_fixed_by_cluster(self.mip_model.copy(),clusters[0],self.sol)
 
@@ -98,6 +100,7 @@ class DATS_Environment():
 
         
         self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
+        
         self.total_time += solver_time
         if self.verbose:
             print("objective: ", obj)
