@@ -27,7 +27,6 @@ class DATS_CPLEX:
         self.c = cplex.Cplex()
         self.c.read(lp_file_name)
 
-
         ## deteriorate CPLEX performance, disable later
         #self.c.context.cplex_parameters.threads = 1
         #self.c.context.cplex_parameters.threads = 1
@@ -50,7 +49,6 @@ class DATS_CPLEX:
         self.c.parameters.mip.cuts.zerohalfcut.set(-1)
         ##-------------------------------------------
 
-
         # # Display all binary variables that have a solution value of 1.
         types = self.c.variables.get_types()
         self.nvars = self.c.variables.get_num()
@@ -63,31 +61,18 @@ class DATS_CPLEX:
             in zip(range(self.nvars), self.c.variables.get_types())
             if typ == self.c.variables.type.binary]
         #get binary variables' names
-        self.binvarsnames = self.c.variables.get_names(self.binvars)
+        self.binvarnames = self.c.variables.get_names(self.binvars)
 
         # get columns of binary vars
         binvarcols = self.c.variables.get_cols(self.binvars)
 
-        # get variable names
-        binvarnames = self.c.variables.get_names(self.binvars)
-
         #adjacency matrix
         self.adjacency = np.zeros((len(self.binvars), nconsts))
 
-        self.var_dict = {}
-        self.var_dict_index_name = {}
-        self.var_dict_index_var = {}
-        self.var_dict_name_index = {}
-
-        self.var_count = -1
 
         for v, e in zip(self.binvars, binvarcols): 
-            print(v, e.ind, e.val)
+            #print(v, e.ind, e.val)
             self.adjacency[v][e.ind] = e.val
-
-            self.var_count += 1
-            self.var_dict_index_name[self.var_count] = binvarnames[v]
-            self.var_dict_name_index[binvarnames[v]] = self.var_count
 
         return None
 
@@ -99,7 +84,7 @@ class DATS_CPLEX:
         choices = list(range(num_clusters))
         clusters = dict([(i, []) for i in range(num_clusters)])
 
-        for k in self.var_dict_index_name.keys():
+        for k in self.binvars:
             cluster_choice = random.choice(choices)
             clusters[cluster_choice].append(k)
 
@@ -180,8 +165,11 @@ class DATS_CPLEX:
             self.c.parameters.mip.limits.solutions = 9223372036800
 
         # Solve the model.
-        self.status = self.c.solve()
-        self.status = 'optimal'
+        s = self.c.solve()
+        self.status = self.c.solution.status[1] #self.c.solution.MIP.get_subproblem_status()
+        print ("MIP Status: ", self.status)
+        print ("MIP relative Gap: ", self.c.solution.MIP.get_mip_relative_gap())
+
         #self.status == self.c.get_status_string()
         self.c.objective_value = self.c.solution.get_objective_value()
         
