@@ -34,6 +34,8 @@ class DATS_Environment():
 
         self.var_dict = self.DATS.var_dict_index_name
         self.sol, self.start_obj = self.DATS.optimize()
+
+        
         self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
         
         Actions = namedtuple('Actions', 'var_count num_clusters')

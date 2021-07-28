@@ -140,15 +140,13 @@ class DATS_CPLEX:
 
         new_sol = np.zeros(len(self.binvars))
 
-
-        vals = model.solution.get_values(self.binvars)
-        new_sol = [round(v) for  v in vals]
+        new_sol = [round(model.solution.get_values(var))  for var in self.binvars ]
 
 
 
 		# 		return sol, run_time, -1
 
-        return new_sol, run_time, model.objective_value, status
+        return new_sol, run_time, model.solution.get_objective_value(), status
 
 
 
@@ -166,27 +164,35 @@ class DATS_CPLEX:
 
         # Solve the model.
         s = self.c.solve()
-        self.status = self.c.solution.status[1] #self.c.solution.MIP.get_subproblem_status()
+        status = self.c.solution.status[1] #self.c.solution.MIP.get_subproblem_status()
         print ("MIP Status: ", self.status)
         print ("MIP relative Gap: ", self.c.solution.MIP.get_mip_relative_gap())
 
         #self.status == self.c.get_status_string()
-        self.c.objective_value = self.c.solution.get_objective_value()
-        
-        if self.status == 'optimal':
-            print('optimal solution cost {} found'.format(self.c.objective_value))
-            self.sol_vals = self.c.solution.get_values(self.binvars)
+        self.obj_val = -1
 
-            for v in self.sol_vals:
-                #if abs(v.x) > 1e-6: # only printing non-zeros
-                #print('{} : {}'.format(v.name, v.x))
-                sol.append(round(v))
-        return np.array(sol), self.c.objective_value
+        if status == 'optimal':
+            print('optimal solution cost {} found'.format(self.c.solution.get_objective_value()))
+        elif status == 'feasible ':
+            print('sol.cost {} found, best possible: {}'.format(self.c.solution.get_objective_value()))
+        elif status == 'infeasible':
+            print('no feasible solution found, lower bound is: {}'.format(self.c.solution.get_objective_value()))
+
+        sol = []
+        if status == 'optimal' or self.status == 'feasible' :
+            if(init_sol):
+                self.sol_vals = self.c.solution.get_values(self.binvars)
+                self.obj_val = self.c.solution.get_objective_value()
+                self.status = status
+                sol = [round(self.c.solution.get_values(var))  for var in self.binvars ]
+            #sol = round(self.c.solution.get_values(self.binvars))
+            
+        return np.array(sol), self.c.solution.get_objective_value(), status
 
 
 dats = DATS_CPLEX("DATS","DATS/polska_01.lp")
 clusters = dats.uniform_random_clusters(4)
-sol,obj = dats.optimize(True)
+sol,obj, status = dats.optimize(True)
 #new_sol, run_time, objective_value = 
 dats.solve_fixed_by_cluster(copy.copy(dats.c), clusters[0], sol )
 
