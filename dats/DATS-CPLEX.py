@@ -27,6 +27,30 @@ class DATS_CPLEX:
         self.c = cplex.Cplex()
         self.c.read(lp_file_name)
 
+
+        ## deteriorate CPLEX performance, disable later
+        #self.c.context.cplex_parameters.threads = 1
+        #self.c.context.cplex_parameters.threads = 1
+        self.c.parameters.mip.strategy.heuristicfreq = -1
+        self.c.parameters.parallel.set(-1)
+        self.c.parameters.mip.cuts.bqp.set(-1)
+        self.c.parameters.mip.cuts.cliques.set(-1)
+        self.c.parameters.mip.cuts.covers.set(-1)
+        self.c.parameters.mip.cuts.disjunctive.set(-1)
+        self.c.parameters.mip.cuts.flowcovers.set(-1)
+        self.c.parameters.mip.cuts.pathcut.set(-1)
+        self.c.parameters.mip.cuts.gomory.set(-1)
+        self.c.parameters.mip.cuts.gubcovers.set(-1)
+        self.c.parameters.mip.cuts.implied.set(-1)
+        self.c.parameters.mip.cuts.localimplied.set(-1)
+        self.c.parameters.mip.cuts.liftproj.set(-1)
+        self.c.parameters.mip.cuts.mircut.set(-1)
+        self.c.parameters.mip.cuts.mcfcut.set(-1)
+        self.c.parameters.mip.cuts.rlt.set(-1)
+        self.c.parameters.mip.cuts.zerohalfcut.set(-1)
+        ##-------------------------------------------
+
+
         # # Display all binary variables that have a solution value of 1.
         types = self.c.variables.get_types()
         self.nvars = self.c.variables.get_num()
@@ -143,10 +167,17 @@ class DATS_CPLEX:
 
 
 
-    def optimize(self):
+    def optimize(self, init_sol = False):
         sol = []
         self.status = []
         self.sol_vals = []
+
+        if init_sol :
+            #self.c.parameters.parameters.mip.limits.solutions.set(1)
+            self.c.parameters.mip.limits.solutions = 1
+        else:
+#            self.c.parameters.parameters.mip.limits.solutions.set(9223372036800)
+            self.c.parameters.mip.limits.solutions = 9223372036800
 
         # Solve the model.
         self.status = self.c.solve()
@@ -167,7 +198,7 @@ class DATS_CPLEX:
 
 dats = DATS_CPLEX("DATS","DATS/polska_01.lp")
 clusters = dats.uniform_random_clusters(4)
-sol,obj = dats.optimize()
+sol,obj = dats.optimize(True)
 #new_sol, run_time, objective_value = 
 dats.solve_fixed_by_cluster(copy.copy(dats.c), clusters[0], sol )
 
