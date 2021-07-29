@@ -70,7 +70,7 @@ class DATS_CPLEX:
         self.adjacency = np.zeros((len(self.binvars), nconsts))
 
 
-        for v, e in zip(self.binvars, binvarcols): 
+        for v, e in zip(range(self.get_nbinvars()), binvarcols): 
             #print(v, e.ind, e.val)
             self.adjacency[v][e.ind] = e.val
         #self.adjacency = [[e.val for v in self.binvars] for e.ind in binvarcols]
@@ -120,8 +120,12 @@ class DATS_CPLEX:
         #         self.c.variables.set_upper_bounds(i, sol[i])
 
         #for var, val in zip (cluster, sol[cluster]):   
-        model.variables.set_upper_bounds([(var, float(val)) for var, val in zip (cluster, sol[cluster]) ])
-        model.variables.set_lower_bounds([(var, float(val)) for var, val in zip (cluster, sol[cluster]) ])
+        self.c.variables.set_upper_bounds([(var, 1.0) for var  in self.binvars])
+        self.c.variables.set_lower_bounds([(var, 0.0) for var  in self.binvars])
+ 
+
+        self.c.variables.set_upper_bounds([(var, float(val)) for var, val in zip (cluster, sol[cluster]) ])
+        self.c.variables.set_lower_bounds([(var, float(val)) for var, val in zip (cluster, sol[cluster]) ])
         #for var in cluster:
         #    model.variables.set_lower_bounds(var, float(sol[var]))
             
@@ -143,13 +147,13 @@ class DATS_CPLEX:
 
         new_sol = np.zeros(len(self.binvars))
 
-        new_sol = [round(model.solution.get_values(var))  for var in self.binvars ]
+        new_sol = [round(self.c.solution.get_values(var))  for var in self.binvars ]
 
 
 
 		# 		return sol, run_time, -1
 
-        return new_sol, run_time, model.solution.get_objective_value(), status
+        return np.array(new_sol), run_time, self.c.solution.get_objective_value(), status
 
 
 
@@ -181,17 +185,19 @@ class DATS_CPLEX:
         elif status == 'infeasible':
             print('no feasible solution found, lower bound is: {}'.format(self.c.solution.get_objective_value()))
 
-        sol = []
+        sol = np.zeros(len(self.binvars))
         if status == 'optimal' or self.status == 'feasible' :
             if(init_sol):
                 self.sol_vals = self.c.solution.get_values(self.binvars)
                 self.obj_val = self.c.solution.get_objective_value()
                 self.status = status
             sol = [round(self.c.solution.get_values(var))  for var in self.binvars ]
-
+            
             #sol = round(self.c.solution.get_values(self.binvars))
             
         return np.array(sol), self.c.solution.get_objective_value(), status
+
+
 
 """"
 dats = DATS_CPLEX("DATS","DATS/polska_01.lp")

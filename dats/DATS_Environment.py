@@ -8,6 +8,7 @@ from matplotlib import pyplot
 from random import randint
 from DATS import  DATS_instance
 from DATS_CPLEX  import DATS_CPLEX
+import cplex
 import time
 from collections import namedtuple
 import copy
@@ -28,10 +29,14 @@ class DATS_Environment():
 #        self.DATS = DATS(self.inst, self.model_name,self.lp_file_name)#
         self.DATS_CPLEX = DATS_CPLEX( self.model_name,self.lp_file_name)
         
-        self.mip_model,self.adj,self.var_count = self.DATS_CPLEX.c,self.DATS_CPLEX.adjacency,self.DATS_CPLEX.get_nbinvars()
+        self.mip_model = cplex.Cplex(self.DATS_CPLEX.c)
+        self.adj = self.DATS_CPLEX.adjacency
+        self.var_count = self.DATS_CPLEX.get_nbinvars()
+
+
         self.mip_model.max_seconds = config["time_limit"]
         self.mip_model.verbose = config["verbose"]
-        self.original_mip_model = copy.copy(self.mip_model)
+        self.original_mip_model = cplex.Cplex(self.mip_model)
 
 
         #self.var_dict = self.DATS.var_dict_index_name
@@ -49,18 +54,18 @@ class DATS_Environment():
         self.cluster_list = []
         self.obj_list = [self.start_obj]
 
-    def uniform_random_clusters(self,var_dict, num_clusters):
-        '''Return a random clustering. Each node is assigned to a cluster
-        a equal probability.'''
+    # def uniform_random_clusters(self,var_dict, num_clusters):
+    #     '''Return a random clustering. Each node is assigned to a cluster
+    #     a equal probability.'''
 
-        choices = list(range(num_clusters))
-        clusters = dict([(i, []) for i in range(num_clusters)])
+    #     choices = list(range(num_clusters))
+    #     clusters = dict([(i, []) for i in range(num_clusters)])
 
-        for k in var_dict.keys():
-            cluster_choice = random.choice(choices)
-            clusters[cluster_choice].append(k)
+    #     for k in var_dict.keys():
+    #         cluster_choice = random.choice(choices)
+    #         clusters[cluster_choice].append(k)
 
-        return clusters
+    #     return clusters
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -68,7 +73,8 @@ class DATS_Environment():
 
     def reset(self):
         """Resets the environment and returns the start state"""
-        self.mip_model = copy.copy(self.original_mip_model)
+        self.mip_model = cplex.Cplex(self.DATS_CPLEX.c) #cplex.Cplex(self.original_mip_model)
+        
         self.sol, self.start_obj, status = self.DATS_CPLEX.optimize()
         self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
         self.next_state = None
@@ -87,12 +93,12 @@ class DATS_Environment():
 
 
         if (random.random()<self.random_clusters_likelihood):
-            clusters = self.uniform_random_clusters(self.var_dict,self.num_clusters)
+            clusters = self.DATS_CPLEX.uniform_random_clusters(self.num_clusters)
         else:
             clusters = self.action_to_clusters(action[0].cpu().detach().numpy())
 
 
-        self.sol, solver_time, obj, stat = self.DATS_CPLEX.solve_fixed_by_cluster(copy.copy(self.mip_model), clusters[0], self.sol )
+        self.sol, solver_time, obj, stat = self.DATS_CPLEX.solve_fixed_by_cluster(cplex.Cplex(self.DATS_CPLEX.c), clusters[0], self.sol )#cplex.Cplex(self.mip_model)
         
         #self.sol, solver_time, obj = self.DATS.solve_fixed_by_cluster(self.mip_model.copy(),clusters[0],self.sol)
 
@@ -100,7 +106,6 @@ class DATS_Environment():
 
         
         self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
-        
         self.total_time += solver_time
         if self.verbose:
             print("objective: ", obj)
