@@ -199,7 +199,7 @@ class DATS_CPLEX:
 
 
 
-""""
+""""git tash
 dats = DATS_CPLEX("DATS","DATS/polska_01.lp")
 clusters = dats.uniform_random_clusters(4)
 sol,obj, status = dats.optimize(True)
