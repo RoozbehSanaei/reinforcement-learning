@@ -97,13 +97,11 @@ class DATS_CPLEX:
     def solve_fixed_by_cluster(self, model, cluster, sol=None):
         """Perform gradient descent on model along coordinates defined by 
         variables in cluster,  starting from a current solution sol.
-
         Arguments:
         model: the integer program.
         cluster: the coordinates to perform gradient descent on.
         var_dict: mapping node index to node variable name.
         sol: a dict representing the current solution.
-
         Returns:
         new_sol: the new solution.
         time: the time used to perform the descent.
@@ -198,16 +196,13 @@ class DATS_CPLEX:
         return np.array(sol), self.c.solution.get_objective_value(), status
 
 
-
-""""git tash
+'''
 dats = DATS_CPLEX("DATS","DATS/polska_01.lp")
 clusters = dats.uniform_random_clusters(4)
 sol,obj, status = dats.optimize(True)
 #new_sol, run_time, objective_value = 
 dats.solve_fixed_by_cluster(copy.copy(dats.c), clusters[0], sol )
-
-"""
-
+'''
 #print(new_sol, 0, objective_value)
 #parameters.mip.limits.solutions
 #>>> cpx.parameters.lpmethod.set(cpx.parameters.lpmethod.values.primal)
