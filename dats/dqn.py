@@ -25,7 +25,7 @@ config = {
 "random_clusters_likelihood": 0.2,
 "done_likelihood": 0.001,
 "model_name": "DATS",
-"lp_file_name": "DATS/polska_01.lp",
+"lp_file_name": "DATS/pioro40.lp",
 "thresh": 0.5,
 "BATCH_SIZE": 128,
 "GAMMA": 0.999,

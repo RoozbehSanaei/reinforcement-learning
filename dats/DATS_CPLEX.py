@@ -65,6 +65,9 @@ class DATS_CPLEX:
 
         # get columns of binary vars
         binvarcols = self.c.variables.get_cols(self.binvars)
+        if(len(binvarcols) == 0):
+            print("No binary variable exists ...")
+            exit()
 
         #adjacency matrix
         self.adjacency = np.zeros((len(self.binvars), nconsts))
