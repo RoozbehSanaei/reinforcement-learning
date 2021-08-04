@@ -12,6 +12,7 @@ import cplex
 import time
 from collections import namedtuple
 import copy
+from sklearn.decomposition import TruncatedSVD
 
 class DATS_Environment():
 
@@ -23,6 +24,10 @@ class DATS_Environment():
         self.done_likelihood = config["done_likelihood"]
         self.model_name = config["model_name"]
         self.lp_file_name = config["lp_file_name"]
+        self.reduced_dimensionalities = config["reduced_dimensionalities"]
+        self.clf = TruncatedSVD(self.reduced_dimensionalities )
+        self.history = []
+
 
 
         self.inst = DATS_instance()
@@ -41,9 +46,12 @@ class DATS_Environment():
 
         #self.var_dict = self.DATS.var_dict_index_name
         self.sol, self.start_obj,status = self.DATS_CPLEX.optimize()
+        self.history.append(self.start_obj)
 
-        
-        self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
+        Xpca = self.clf.fit_transform(self.adj)
+
+        #self.state = np.concatenate((self.sol[:,np.newaxis],pca.fit_transform(self.adj)),axis=1)
+        self.state = np.concatenate((self.sol[:,np.newaxis],Xpca),axis=1)
         
         Actions = namedtuple('Actions', 'var_count num_clusters')
         self.actions = Actions(self.var_count,self.num_clusters)
@@ -76,7 +84,14 @@ class DATS_Environment():
         self.mip_model = cplex.Cplex(self.DATS_CPLEX.c) #cplex.Cplex(self.original_mip_model)
         
         self.sol, self.start_obj, status = self.DATS_CPLEX.optimize()
-        self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
+        self.history.append(self.start_obj)
+
+
+        Xpca = self.clf.fit_transform(self.adj)
+
+        #self.state = np.concatenate((self.sol[:,np.newaxis],pca.fit_transform(self.adj)),axis=1)
+        self.state = np.concatenate((self.sol[:,np.newaxis],Xpca),axis=1)
+        
         self.next_state = None
         self.reward = None
         self.done = False
@@ -103,9 +118,14 @@ class DATS_Environment():
         #self.sol, solver_time, obj = self.DATS.solve_fixed_by_cluster(self.mip_model.copy(),clusters[0],self.sol)
 
         #Sprint(clusters[0],self.sol)
+        self.history.append(obj)
 
+
+        Xpca = self.clf.fit_transform(self.adj)
+
+        #self.state = np.concatenate((self.sol[:,np.newaxis],pca.fit_transform(self.adj)),axis=1)
+        self.state = np.concatenate((self.sol[:,np.newaxis],Xpca),axis=1)
         
-        self.state = np.concatenate((self.sol[:,np.newaxis],self.adj),axis=1)
         self.total_time += solver_time
         if self.verbose:
             print("objective: ", obj)

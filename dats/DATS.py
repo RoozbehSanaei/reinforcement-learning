@@ -116,6 +116,7 @@ class DATS:
 		#print(self.var_in_constrs_index)
 
 		self.adjacency = np.zeros((len(self.var_dict_name_index), len(self.constr_dict_name_index)))
+		
 
 		for key in self.var_dict_name_index:
 			for i in range(len (self.var_in_constrs_index[key])):

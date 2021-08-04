@@ -19,6 +19,7 @@ import random
 import copy
 import time
 import numpy as np
+from scipy.sparse import coo_matrix
 
 class DATS_CPLEX:
 
@@ -66,14 +67,20 @@ class DATS_CPLEX:
         # get columns of binary vars
         binvarcols = self.c.variables.get_cols(self.binvars)
 
-        #adjacency matrix
-        self.adjacency = np.zeros((len(self.binvars), nconsts))
 
+        sparse_rows = []
+        sparse_cols = []
+        sparse_val = []
+        for v, e in zip(range(self.get_nbinvars()), binvarcols):
+            for ind in e.ind:
+                sparse_rows.append(v)
+                sparse_cols.append(ind)
+            for val in e.val:
+                sparse_val.append(val)
+        
 
-        for v, e in zip(range(self.get_nbinvars()), binvarcols): 
-            #print(v, e.ind, e.val)
-            self.adjacency[v][e.ind] = e.val
-        #self.adjacency = [[e.val for v in self.binvars] for e.ind in binvarcols]
+        self.adjacency = coo_matrix((sparse_val, (sparse_rows, sparse_cols)))
+
 
         return None
 
