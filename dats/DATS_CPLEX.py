@@ -21,11 +21,23 @@ import time
 import numpy as np
 from scipy.sparse import coo_matrix
 
+
 class DATS_CPLEX:
+    class StopCriterion(cplex.callbacks.MIPInfoCallback):
+        def __call__(self):
+            if self.has_incumbent(): ## self.get_num_nodes() > 1000:
+                #if self.get_MIP_relative_gap() < 0.1:
+                self.abort()
+                return
+            #else: # we’ve processed fewer than 1000 nodes
+            #    if self.get_MIP_relative_gap() < 0.001:
+            #        self.abort()
+                #return
 
     def __init__(self,model_name, lp_file_name):
         # Read in a model file.
         self.c = cplex.Cplex()
+        self.c.register_callback(self.StopCriterion)
         self.c.read(lp_file_name)
 
         ## deteriorate CPLEX performance, disable later
@@ -48,6 +60,10 @@ class DATS_CPLEX:
         self.c.parameters.mip.cuts.mcfcut.set(-1)
         self.c.parameters.mip.cuts.rlt.set(-1)
         self.c.parameters.mip.cuts.zerohalfcut.set(-1)
+
+        self.c.parameters.timelimit.set(100)
+
+
         ##-------------------------------------------
 
         # # Display all binary variables that have a solution value of 1.
@@ -146,15 +162,19 @@ class DATS_CPLEX:
     # print("Network time (sec.):", outproc.network_time)
 
         start_time = time.time()
+        self.c.parameters.mip.limits.solutions.set(9223372036800000000) 
         status = self.c.solve()
+        print('[solve by cluster]')
+        print('solution cost {} found'.format(self.c.solution.get_objective_value()))
+        print ("MIP Status: ", status)
+        print ("MIP relative Gap: ", self.c.solution.MIP.get_mip_relative_gap())
+
         end_time = time.time()
         run_time = end_time - start_time
 
         new_sol = np.zeros(len(self.binvars))
 
         new_sol = [round(self.c.solution.get_values(var))  for var in self.binvars ]
-
-
 
 		# 		return sol, run_time, -1
 
@@ -169,10 +189,10 @@ class DATS_CPLEX:
 
         if init_sol :
             #self.c.parameters.parameters.mip.limits.solutions.set(1)
-            self.c.parameters.mip.limits.solutions = 1
+            self.c.parameters.mip.limits.solutions.set(1)
         else:
 #            self.c.parameters.parameters.mip.limits.solutions.set(9223372036800)
-            self.c.parameters.mip.limits.solutions = 9223372036800
+            self.c.parameters.mip.limits.solutions.set(9223372036800000000) 
 
         # Solve the model.
         s = self.c.solve()
@@ -199,7 +219,9 @@ class DATS_CPLEX:
             sol = [round(self.c.solution.get_values(var))  for var in self.binvars ]
             
             #sol = round(self.c.solution.get_values(self.binvars))
-            
+        self.c.parameters.mip.limits.solutions.set(9223372036800000000) 
+        
+
         return np.array(sol), self.c.solution.get_objective_value(), status
 
 

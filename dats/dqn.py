@@ -26,7 +26,7 @@ config = {
 "done_likelihood": 0.001,
 "reduced_dimensionalities" : 100,
 "model_name": "DATS",
-"lp_file_name": "LPs/pcb442_50_1_p.dat.lp",
+"lp_file_name": "LPs/data_12_6_0_r.lp",
 "thresh": 0.5,
 "BATCH_SIZE": 128,
 "GAMMA": 0.999,

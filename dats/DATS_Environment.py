@@ -45,7 +45,7 @@ class DATS_Environment():
 
 
         #self.var_dict = self.DATS.var_dict_index_name
-        self.sol, self.start_obj,status = self.DATS_CPLEX.optimize()
+        self.sol, self.start_obj,status = self.DATS_CPLEX.optimize(init_sol = True)
         self.history.append(self.start_obj)
 
         Xpca = self.clf.fit_transform(self.adj)
@@ -83,7 +83,7 @@ class DATS_Environment():
         """Resets the environment and returns the start state"""
         self.mip_model = cplex.Cplex(self.DATS_CPLEX.c) #cplex.Cplex(self.original_mip_model)
         
-        self.sol, self.start_obj, status = self.DATS_CPLEX.optimize()
+        self.sol, self.start_obj, status = self.DATS_CPLEX.optimize(True)
         self.history.append(self.start_obj)
 
 
