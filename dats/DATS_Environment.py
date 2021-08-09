@@ -3,7 +3,7 @@ import random
 from collections import namedtuple
 import numpy as np
 import matplotlib as mpl
-
+from gym.utils import seeding
 from matplotlib import pyplot
 from random import randint
 from DATS import  DATS_instance
@@ -113,10 +113,10 @@ class DATS_Environment():
         global_counter = global_counter + 1
 
         if (random.random()<self.random_clusters_likelihood):
-            clusters = self.DATS_CPLEX.uniform_random_clusters(self.num_clusters)
+            clusters = self.DATS_CPLEX.uniform_random_clusters(self.num_clusters, True)
         else:
             clusters = self.action_to_clusters(action[0].cpu().detach().numpy())
-
+            
         #print(global_counter , " == > " , clusters[0])
 
 

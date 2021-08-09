@@ -20,7 +20,7 @@ import copy
 import time
 import numpy as np
 from scipy.sparse import coo_matrix
-
+import utilities
 
 class DATS_CPLEX:
     class StopCriterion(cplex.callbacks.MIPInfoCallback):
@@ -126,21 +126,38 @@ class DATS_CPLEX:
         self.adjacency = coo_matrix((sparse_val, (sparse_rows, sparse_cols)))
 
 
+     
+
         return None
 
     def get_nbinvars(self):
         return len(self.binvars)
 	
-    def uniform_random_clusters(self,  num_clusters):
+    def uniform_random_clusters(self,  num_clusters, byPercent = False):
         '''Return a random clustering. Each node is assigned to a cluster
         a equal probability.'''
 
-        choices = list(range(num_clusters))
-        clusters = dict([(i, []) for i in range(num_clusters)])
+        if not byPercent:
 
-        for k in self.binvars:
-            cluster_choice = random.choice(choices)
-            clusters[cluster_choice].append(k)
+            choices = list(range(num_clusters))
+            clusters = dict([(i, []) for i in range(num_clusters)])
+
+            for k in self.binvars:
+                cluster_choice = random.choice(choices)
+                clusters[cluster_choice].append(k)
+        else:
+            inx = np.arange(self.get_nbinvars())
+            np.random.shuffle(inx)
+            p = np.array([0.2,0.8]) # must sum upto 1
+            a = np.split(inx,(len(inx)*p[:-1].cumsum()).astype(int))
+
+            clusters = dict([(i, []) for i in range(num_clusters)])
+            for k in range(num_clusters):
+                for e in a[k]:
+                    clusters[k].append(self.binvars[e])
+                #clusters[k] = list(a[k])
+
+
 
         return clusters
 
@@ -173,8 +190,9 @@ class DATS_CPLEX:
         self.c.variables.set_lower_bounds([(var, 0.0) for var  in self.binvars])
  
 
-        self.c.variables.set_upper_bounds([(var, float(val)) for var, val in zip (cluster, sol[cluster]) ])
-        self.c.variables.set_lower_bounds([(var, float(val)) for var, val in zip (cluster, sol[cluster]) ])
+        bound = [(var, float(val)) for var, val in zip (cluster, sol[cluster]) ]
+        self.c.variables.set_upper_bounds(bound)
+        self.c.variables.set_lower_bounds(bound)
         #for var in cluster:
         #    model.variables.set_lower_bounds(var, float(sol[var]))
             
@@ -202,7 +220,8 @@ class DATS_CPLEX:
 
         status = self.c.solution.status[1] #self.c.solution.MIP.get_subproblem_status()
         print('[solve by cluster]')
-        print('solution cost {} found'.format(self.c.solution.get_objective_value()))
+        print('solution cost {} found '.format(self.c.solution.get_objective_value()))
+
         print ("MIP Status: ", status)
         print ("MIP relative Gap: ", self.c.solution.MIP.get_mip_relative_gap())
 
