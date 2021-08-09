@@ -25,20 +25,45 @@ from scipy.sparse import coo_matrix
 class DATS_CPLEX:
     class StopCriterion(cplex.callbacks.MIPInfoCallback):
         def __call__(self):
-            if self.has_incumbent(): ## self.get_num_nodes() > 1000:
-                #if self.get_MIP_relative_gap() < 0.1:
-                self.abort()
-                return
-            #else: # we’ve processed fewer than 1000 nodes
-            #    if self.get_MIP_relative_gap() < 0.001:
-            #        self.abort()
+            #if self.has_incumbent() and self.get_dettime() - self.get_start_dettime()  : ## self.get_num_nodes() > 1000:
+            #    #if self.get_MIP_relative_gap() < 0.1:
+            #    self.abort()
+            #    return
+            ##else: # we’ve processed fewer than 1000 nodes
+            ##    if self.get_MIP_relative_gap() < 0.001:
+            ##        self.abort()
                 #return
+            if not self.aborted and self.has_incumbent():
+                gap = 100.0 * self.get_MIP_relative_gap()
+                timeused = self.get_time() - self.starttime
+                if timeused > self.timelimit: # and gap < self.acceptablegap:
+                    print("Good enough solution at", timeused, "sec., gap =",  gap)#, "%, quitting.")
+                    self.aborted = 1
+                    self.abort()
+
+
 
     def __init__(self,model_name, lp_file_name):
         # Read in a model file.
         self.c = cplex.Cplex()
-        self.c.register_callback(self.StopCriterion)
+        
+        #timelim_cb = c.register_callback(TimeLimitCallback)
+        #timelim_cb.starttime = c.get_time()
+        #timelim_cb.timelimit = 1
+        #timelim_cb.acceptablegap = 10
+        #timelim_cb.aborted = 0
+
+
         self.c.read(lp_file_name)
+
+
+        self.complexCriteria = self.c.register_callback(self.StopCriterion)
+        self.complexCriteria.starttime = self.c.get_time()
+        self.complexCriteria.timelimit = 10
+        self.complexCriteria.acceptablegap = 10
+        self.complexCriteria.aborted = 0
+
+
 
         ## deteriorate CPLEX performance, disable later
         #self.c.context.cplex_parameters.threads = 1
@@ -63,7 +88,10 @@ class DATS_CPLEX:
 
         self.c.parameters.timelimit.set(100)
 
-
+        self.c.set_log_stream(None)
+        self.c.set_error_stream(None)
+        self.c.set_warning_stream(None)
+        self.c.set_results_stream(None)
         ##-------------------------------------------
 
         # # Display all binary variables that have a solution value of 1.
@@ -150,7 +178,7 @@ class DATS_CPLEX:
         #for var in cluster:
         #    model.variables.set_lower_bounds(var, float(sol[var]))
             
-
+        #print("any 1? ", np.sum(sol[cluster]))
 
 
 		# # model.start = var_starts
@@ -163,7 +191,16 @@ class DATS_CPLEX:
 
         start_time = time.time()
         self.c.parameters.mip.limits.solutions.set(9223372036800000000) 
-        status = self.c.solve()
+        #self.complexCriteria = self.c.register_callback(self.StopCriterion)
+        self.complexCriteria.starttime = self.c.get_time()
+        self.complexCriteria.timelimit = 10
+        self.complexCriteria.acceptablegap = 10
+        self.complexCriteria.aborted = 0
+
+        self.c.solve()
+
+
+        status = self.c.solution.status[1] #self.c.solution.MIP.get_subproblem_status()
         print('[solve by cluster]')
         print('solution cost {} found'.format(self.c.solution.get_objective_value()))
         print ("MIP Status: ", status)
@@ -187,14 +224,20 @@ class DATS_CPLEX:
         self.status = []
         self.sol_vals = []
 
-        if init_sol :
-            #self.c.parameters.parameters.mip.limits.solutions.set(1)
-            self.c.parameters.mip.limits.solutions.set(1)
-        else:
-#            self.c.parameters.parameters.mip.limits.solutions.set(9223372036800)
-            self.c.parameters.mip.limits.solutions.set(9223372036800000000) 
+        #if init_sol :
+        #    #self.c.parameters.parameters.mip.limits.solutions.set(1)
+        #    self.c.parameters.mip.limits.solutions.set(1)
+        #else:
+#       #     self.c.parameters.parameters.mip.limits.solutions.set(9223372036800)
+        #    self.c.parameters.mip.limits.solutions.set(9223372036800000000) 
 
         # Solve the model.
+        #self.complexCriteria = self.c.register_callback(self.StopCriterion)
+        self.complexCriteria.starttime = self.c.get_time()
+        self.complexCriteria.timelimit = 10
+        self.complexCriteria.acceptablegap = 10
+        self.complexCriteria.aborted = 0
+
         s = self.c.solve()
         status = self.c.solution.status[1] #self.c.solution.MIP.get_subproblem_status()
         print ("MIP Status: ", status)

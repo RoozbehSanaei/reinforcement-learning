@@ -14,6 +14,8 @@ from collections import namedtuple
 import copy
 from sklearn.decomposition import TruncatedSVD
 
+global_counter = 0 
+
 class DATS_Environment():
 
 
@@ -106,11 +108,16 @@ class DATS_Environment():
 
     def step(self, action):
 
+   
+        global global_counter
+        global_counter = global_counter + 1
 
         if (random.random()<self.random_clusters_likelihood):
             clusters = self.DATS_CPLEX.uniform_random_clusters(self.num_clusters)
         else:
             clusters = self.action_to_clusters(action[0].cpu().detach().numpy())
+
+        #print(global_counter , " == > " , clusters[0])
 
 
         self.sol, solver_time, obj, stat = self.DATS_CPLEX.solve_fixed_by_cluster(cplex.Cplex(self.DATS_CPLEX.c), clusters[0], self.sol )#cplex.Cplex(self.mip_model)

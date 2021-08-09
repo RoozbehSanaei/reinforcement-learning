@@ -21,7 +21,7 @@ from DATS_Environment import DATS_Environment
 config = {
 "verbose": True,
 "time_limit": 4,
-"num_clusters": 5,
+"num_clusters": 2,
 "random_clusters_likelihood": 0.2,
 "done_likelihood": 0.001,
 "reduced_dimensionalities" : 100,
