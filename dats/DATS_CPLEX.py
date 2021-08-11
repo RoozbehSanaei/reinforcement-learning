@@ -86,7 +86,7 @@ class DATS_CPLEX:
         self.c.parameters.mip.cuts.rlt.set(-1)
         self.c.parameters.mip.cuts.zerohalfcut.set(-1)
 
-        self.c.parameters.threads.set(4)
+        self.c.parameters.threads.set(1)
 
         self.c.parameters.timelimit.set(100)
 
