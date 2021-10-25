@@ -1,5 +1,5 @@
-from mip import Model, xsum, BINARY, minimize, ConstrsGenerator, CutPool
-from mip import Model, MAXIMIZE, CBC, INTEGER, OptimizationStatus, Column
+#from mip import Model, xsum, BINARY, minimize, ConstrsGenerator, CutPool
+#from mip import Model, MAXIMIZE, CBC, INTEGER, OptimizationStatus, Column
 import logging
 from pprint import pprint
 import numpy as np

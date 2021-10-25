@@ -115,7 +115,7 @@ class DATS_Environment():
         if (random.random()<self.random_clusters_likelihood):
             clusters = self.DATS_CPLEX.uniform_random_clusters(self.num_clusters, True)
         else:
-            clusters = self.action_to_clusters(action[0].cpu().detach().numpy())
+            clusters = self.action_to_clusters(action.cpu().detach().numpy())
             
         #print(global_counter , " == > " , clusters[0])
 
