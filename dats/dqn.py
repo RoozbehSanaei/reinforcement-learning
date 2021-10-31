@@ -17,6 +17,7 @@ import torch.nn.functional as F
 #import torchvision.transforms as T
 import numpy as np
 from DATS_Environment import DATS_Environment
+from Clustering_Environment import Clustering_Environment
 
 
 config = {
@@ -36,7 +37,24 @@ config = {
 "EPS_DECAY": 200,
 "TARGET_UPDATE": 10}
 
-env = DATS_Environment(config)
+
+import xlrd
+book = xlrd.open_workbook('contrastInjector.xls')
+
+sheet_data = book.sheet_by_name('DSM')
+data = np.array([[sheet_data.cell_value(r, c) for c in range(sheet_data.ncols)] for r in range(sheet_data.nrows)])
+DSM = data[1:,1:].astype(np.float32)
+Components = data[1:,0]
+
+sheet_constraints = book.sheet_by_name('CONSTRAINTS')
+constraints_data = np.array([[sheet_constraints.cell_value(r, c) for c in range(sheet_constraints.ncols)] for r in range(sheet_constraints.nrows)])
+Constraints = constraints_data[1:,1:].astype(np.float32)
+
+
+env = Clustering_Environment(DSM,Constraints)
+seed = 543
+env.seed(seed)
+torch.manual_seed(seed)
 
 
 
@@ -217,7 +235,7 @@ class DQN(nn.Module):
 
 # Get number of actions from gym action space
 
-n_actions = env.actions.var_count
+n_actions = (env.N + 1) * (env.N + 1)
 
 policy_net = DQN(env.state.shape[0], env.state.shape[1], n_actions).to(device)
 target_net = DQN(env.state.shape[0], env.state.shape[1], n_actions).to(device)
@@ -245,7 +263,8 @@ def select_action(state,thresh=0.5):
             action  = (policy_net(state)>thresh).int()
             return action
     else:
-        return torch.randint(low=0,high=2,size=(1,env.actions.var_count),device=device)
+            return torch.rand(size=(1,n_actions),device=device)
+
 
 
 episode_durations = []
