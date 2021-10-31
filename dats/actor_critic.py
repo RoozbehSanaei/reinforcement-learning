@@ -11,6 +11,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 from DATS_Environment import DATS_Environment
+from Clustering_Environment import Clustering_Environment
 
 # Cart Pole
 
@@ -45,10 +46,30 @@ config = {
 "EPS_DECAY": 200,
 "TARGET_UPDATE": 10}
 
+device = torch.device("cpu")
+
+'''
 env = DATS_Environment(config)
 env.seed(args.seed)
 torch.manual_seed(args.seed)
-device = torch.device("cpu")
+'''
+
+import xlrd
+book = xlrd.open_workbook('contrastInjector.xls')
+
+sheet_data = book.sheet_by_name('DSM')
+data = np.array([[sheet_data.cell_value(r, c) for c in range(sheet_data.ncols)] for r in range(sheet_data.nrows)])
+DSM = data[1:,1:].astype(np.float32)
+Components = data[1:,0]
+
+sheet_constraints = book.sheet_by_name('CONSTRAINTS')
+constraints_data = np.array([[sheet_constraints.cell_value(r, c) for c in range(sheet_constraints.ncols)] for r in range(sheet_constraints.nrows)])
+Constraints = constraints_data[1:,1:].astype(np.float32)
+
+
+env = Clustering_Environment(DSM,Constraints)
+env.seed(args.seed)
+torch.manual_seed(args.seed)
 
 
 
@@ -125,7 +146,7 @@ class Policy(nn.Module):
         # 2. the value from state s_t 
         return action_prob, state_values
 '''
-n_actions = env.actions.var_count
+n_actions = (env.N + 1) * (env.N + 1)
 model = Policy(env.state.shape[0], env.state.shape[1], n_actions).to(device)
 optimizer = optim.Adam(model.parameters(), lr=3e-2)
 eps = np.finfo(np.float32).eps.item()
@@ -137,7 +158,7 @@ def select_action(state,thresh=0.5):
     eps_threshold = config["EPS_END"] + (config["EPS_START"] - config["EPS_END"]) * \
         math.exp(-1. * steps_done / config["EPS_DECAY"])
     steps_done += 1
-    if sample > 0:
+    if sample > 0.5:
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
             # second column on max result is index of where max element was
@@ -145,7 +166,7 @@ def select_action(state,thresh=0.5):
             action  = (model(state)[0]>thresh).int()
             return action
     else:
-        return torch.randint(low=0,high=2,size=(1,env.actions.var_count),device=device)
+        return torch.rand(size=(1,n_actions),device=device)
 
 
 
