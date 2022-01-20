@@ -3,7 +3,7 @@ __pycache__/
 *.dat
 *.lp
 *.bin
-.vscode/
+*.vscode
 
 
 
