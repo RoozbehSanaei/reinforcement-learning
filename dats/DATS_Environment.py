@@ -112,19 +112,25 @@ class DATS_Environment():
     def action_to_clusters(self,action):
         clusters = dict()
         for k in range(self.num_clusters):
-            clusters[k] = [i for i, x in enumerate(action) if x == k]
+            clusters[k] = [i for i, x in enumerate(action[0]) if x == k]
         return clusters
 
-    def step(self, action):
+    def step(self, action_prob,thresh=0.5):
 
    
         global global_counter
         global_counter = global_counter + 1
 
-        if (random.random()<self.random_clusters_likelihood):
-            clusters = self.DATS_CPLEX.uniform_random_clusters(self.num_clusters, True)
-        else:
-            clusters = self.action_to_clusters(action.cpu().detach().numpy())
+        action_prob_norm = (action_prob-action_prob.min())/(action_prob.max()-action_prob.min())
+        desired_action  = (action_prob_norm>thresh).int()
+        #action = random.choice(np.where(desired_action!=0)[1])
+
+
+
+        #if (random.random()<self.random_clusters_likelihood):
+        #    clusters = self.DATS_CPLEX.uniform_random_clusters(self.num_clusters, True)
+        #else:
+        clusters = self.action_to_clusters(desired_action.cpu().detach().numpy())
             
         #print(global_counter , " == > " , clusters[0])
 

@@ -92,10 +92,18 @@ class Policy(nn.Module):
         # and therefore the input image size, so compute it.
         def conv2d_size_out(size, kernel_size = 5, stride = 2):
             return (size - (kernel_size - 1) - 1) // stride  + 1
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(w)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(h)))
-        linear_input_size = convw * convh * 32
-        self.head = nn.Linear(linear_input_size, outputs)
+        convw3 = conv2d_size_out(conv2d_size_out(conv2d_size_out(w)))
+        convh3 = conv2d_size_out(conv2d_size_out(conv2d_size_out(h)))
+
+        convw1 = conv2d_size_out(w)
+        convh1 = conv2d_size_out(h)
+        
+        linear_input_size3 = convw3 * convh3 * 32
+        linear_input_size1 = convw1 * convh1 * 16
+
+        self.head = nn.Linear(linear_input_size3, outputs)
+        self.value = nn.Linear(linear_input_size1, 1)
+
         self.saved_actions = []
         self.rewards = []
 
@@ -105,9 +113,10 @@ class Policy(nn.Module):
     def forward(self, x):
         x = x.to(device)
         x = F.relu(self.bn1(self.conv1(x)))
+        state_value = self.value(x.view(x.size(0), -1))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        return self.head(x.view(x.size(0), -1))
+        return self.head(x.view(x.size(0), -1)),state_value
 
 '''
 class Policy(nn.Module):
@@ -152,21 +161,33 @@ optimizer = optim.Adam(model.parameters(), lr=3e-2)
 eps = np.finfo(np.float32).eps.item()
 
 steps_done = 0
-def select_action(state,thresh=0.5):
+def select_action(state):
     global steps_done
     sample = random.random()
     eps_threshold = config["EPS_END"] + (config["EPS_START"] - config["EPS_END"]) * \
         math.exp(-1. * steps_done / config["EPS_DECAY"])
     steps_done += 1
+    action_prob,state_value = model(state)
+    model.saved_actions.append(SavedAction(action_prob,state_value))
+    return action_prob
+
+
+    '''
     if sample > 0.5:
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            action  = (model(state)[0]>thresh).int()
+            
+
             return action
     else:
-        return torch.rand(size=(1,n_actions),device=device)
+        action = torch.rand(size=(1,n_actions),device=device)
+        model.saved_actions.append(SavedAction(action,state_value))
+        return action
+    '''
+    
+
 
 
 
@@ -187,7 +208,10 @@ def finish_episode():
         returns.insert(0, R)
 
     returns = torch.tensor(returns).to(torch.float32)
-    returns = (returns - returns.mean()) / (returns.std() + eps)
+    if not(math.isnan(returns.std().item())):
+        returns = (returns - returns.mean()) / (returns.std() + eps)
+
+     
 
     for (log_prob, value), R in zip(saved_actions, returns):
         advantage = R - value.item()
@@ -227,11 +251,12 @@ def main():
         # infinite loop while learning
         for t in range(1, 10000):
             state = torch.Tensor(env.state).to(device=device,dtype=torch.float32)[None,None,:,:]
+            state.requires_grad = True
             # select action from policy
-            action = select_action(state)
+            action_prob = select_action(state)
 
             # take the action
-            state, reward, done, _ = env.step(action)
+            state, reward, done, _ = env.step(action_prob)
 
             if args.render:
                 env.render()
@@ -241,11 +266,11 @@ def main():
             if done:
                 break
 
-        # update cumulative reward
-        running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
+            # update cumulative reward
+            running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
 
-        # perform backprop
-        finish_episode()
+            # perform backprop
+            finish_episode()
 
         # log results
         if i_episode % args.log_interval == 0:

@@ -106,8 +106,16 @@ class Clustering_Environment(gym.Env):
         return self.state
 
 
-    def step(self, desired_action):
-        d = np.argmax(desired_action)
+    def step(self, action_prob,thresh=0.5):
+        n_actions = (self.N + 1) * (self.N + 1)
+
+
+   
+        action_prob_norm = (action_prob-action_prob.min())/(action_prob.max()-action_prob.min())
+        desired_action  = (action_prob_norm>thresh).int()
+        d = random.choice(np.where(desired_action!=0)[1])
+
+       
         desired_element1 = d // (self.N+1)
         desired_element2 = d % (self.N+1)
 

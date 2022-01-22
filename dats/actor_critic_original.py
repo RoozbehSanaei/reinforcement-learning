@@ -3,18 +3,14 @@ import gym
 import numpy as np
 from itertools import count
 from collections import namedtuple
-import random
-import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
-from DATS_Environment import DATS_Environment
 
 # Cart Pole
-
-
 
 parser = argparse.ArgumentParser(description='PyTorch actor-critic example')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
@@ -28,89 +24,27 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 args = parser.parse_args()
 
 
-config = {
-"verbose": True,
-"time_limit": 4,
-"num_clusters": 2,
-"random_clusters_likelihood": 0.2,
-"done_likelihood": 0.001,
-"reduced_dimensionalities" : 100,
-"model_name": "DATS",
-"lp_file_name": "/app/reinforcement-learning/LPs/tf-16-d-20-tr-100-Sce-1-RC.dat.lp",
-"thresh": 0.5,
-"BATCH_SIZE": 128,
-"GAMMA": 0.999,
-"EPS_START" : 0.9,
-"EPS_END": 0.05,
-"EPS_DECAY": 200,
-"TARGET_UPDATE": 10}
-
-env = DATS_Environment(config)
+env = gym.make('CartPole-v0')
 env.seed(args.seed)
 torch.manual_seed(args.seed)
-device = torch.device("cpu")
-
 
 
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 
 
 class Policy(nn.Module):
-
-    def __init__(self, h, w, outputs):
-        super(Policy, self).__init__()
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=5, stride=2)
-        self.conv1.weight.data.to_sparse()
-        self.bn1 = nn.BatchNorm2d(16)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
-        self.bn3 = nn.BatchNorm2d(32)
-
-        # Number of Linear input connections depends on output of conv2d layers
-        # and therefore the input image size, so compute it.
-        def conv2d_size_out(size, kernel_size = 5, stride = 2):
-            return (size - (kernel_size - 1) - 1) // stride  + 1
-        convw3 = conv2d_size_out(conv2d_size_out(conv2d_size_out(w)))
-        convh3 = conv2d_size_out(conv2d_size_out(conv2d_size_out(h)))
-
-        convw1 = conv2d_size_out(w)
-        convh1 = conv2d_size_out(h)
-        
-        linear_input_size3 = convw3 * convh3 * 32
-        linear_input_size1 = convw1 * convh1 * 16
-
-        self.head = nn.Linear(linear_input_size3, outputs)
-        self.value = nn.Linear(linear_input_size1, 1)
-
-        self.saved_actions = []
-        self.rewards = []
-
-
-    # Called with either one element to determine next action, or a batch
-    # during optimization. Returns tensor([[left0exp,right0exp]...]).
-    def forward(self, x):
-        x = x.to(device)
-        x = F.relu(self.bn1(self.conv1(x)))
-        state_value = self.value(x.view(x.size(0), -1))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        return self.head(x.view(x.size(0), -1)),state_value
-
-'''
-class Policy(nn.Module):
     """
     implements both actor and critic in one model
     """
     def __init__(self):
         super(Policy, self).__init__()
-        self.affine1 = nn.Linear(101, 256)
+        self.affine1 = nn.Linear(4, 128)
 
         # actor's layer
-        self.action_head = nn.Linear(256, 4)
+        self.action_head = nn.Linear(128, 2)
 
         # critic's layer
-        self.value_head = nn.Linear(256, 1)
+        self.value_head = nn.Linear(128, 1)
 
         # action & reward buffer
         self.saved_actions = []
@@ -133,24 +67,28 @@ class Policy(nn.Module):
         # 1. a list with the probability of each action over the action space
         # 2. the value from state s_t 
         return action_prob, state_values
-'''
-n_actions = env.actions.var_count
-model = Policy(env.state.shape[0], env.state.shape[1], n_actions).to(device)
+
+
+model = Policy()
 optimizer = optim.Adam(model.parameters(), lr=3e-2)
 eps = np.finfo(np.float32).eps.item()
 
-steps_done = 0
+
 def select_action(state):
-    global steps_done
-    sample = random.random()
-    eps_threshold = config["EPS_END"] + (config["EPS_START"] - config["EPS_END"]) * \
-        math.exp(-1. * steps_done / config["EPS_DECAY"])
-    steps_done += 1
-    action_prob,state_value = model(state)
-    model.saved_actions.append(SavedAction(action_prob,state_value))
-    return action_prob
+    state = torch.from_numpy(state).float()
+    probs, state_value = model(state)
 
+    # create a categorical distribution over the list of probabilities of actions
+    m = Categorical(probs)
 
+    # and sample an action using the distribution
+    action = m.sample()
+
+    # save to action buffer
+    model.saved_actions.append(SavedAction(m.log_prob(action), state_value))
+
+    # the action to take (left or right)
+    return action.item()
 
 
 def finish_episode():
@@ -169,10 +107,8 @@ def finish_episode():
         R = r + args.gamma * R
         returns.insert(0, R)
 
-    returns = torch.tensor(returns).to(torch.float32)
-    if not(math.isnan(returns.std().item())):
-        returns = (returns - returns.mean()) / (returns.std() + eps)
-
+    returns = torch.tensor(returns)
+    returns = (returns - returns.mean()) / (returns.std() + eps)
 
     for (log_prob, value), R in zip(saved_actions, returns):
         advantage = R - value.item()
@@ -199,47 +135,38 @@ def finish_episode():
 
 
 def main():
-    env = DATS_Environment(config)
     running_reward = 10
-    old_action = np.zeros((env.actions.var_count))
-    no_change = 0
+
     # run inifinitely many episodes
     for i_episode in count(1):
 
         # reset environment and episode reward
-        #  state = env.reset()
+        state = env.reset()
         ep_reward = 0
 
         # for each episode, only run 9999 steps so that we don't 
         # infinite loop while learning
         for t in range(1, 10000):
-            state = torch.Tensor(env.state).to(device=device,dtype=torch.float32)[None,None,:,:]
+
             # select action from policy
-
-            action_prob = select_action(state)
-            
-
+            action = select_action(state)
 
             # take the action
-            state, reward, done, _ = env.step(action_prob)
-            #if (reward==0): no_change += 1
-            #print("no change",no_change)
+            state, reward, done, _ = env.step(action)
 
             if args.render:
                 env.render()
 
             model.rewards.append(reward)
             ep_reward += reward
-
             if done:
                 break
-        
-        
-            # update cumulative reward
-            running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
 
-            # perform backprop
-            finish_episode()
+        # update cumulative reward
+        running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
+
+        # perform backprop
+        finish_episode()
 
         # log results
         if i_episode % args.log_interval == 0:
@@ -247,12 +174,10 @@ def main():
                   i_episode, ep_reward, running_reward))
 
         # check if we have "solved" the cart pole problem
-        '''
         if running_reward > env.spec.reward_threshold:
             print("Solved! Running reward is now {} and "
                   "the last episode runs to {} time steps!".format(running_reward, t))
             break
-        '''
 
 
 if __name__ == '__main__':
