@@ -3,6 +3,7 @@ import gym
 import numpy as np
 from itertools import count
 from collections import namedtuple
+from Clustering_Environment import Clustering_Environment
 
 import torch
 import torch.nn as nn
@@ -11,6 +12,20 @@ import torch.optim as optim
 from torch.distributions import Categorical
 
 # Cart Pole
+
+import xlrd
+book = xlrd.open_workbook('contrastInjector.xls')
+
+sheet_data = book.sheet_by_name('DSM')
+data = np.array([[sheet_data.cell_value(r, c) for c in range(sheet_data.ncols)] for r in range(sheet_data.nrows)])
+DSM = data[1:,1:].astype(np.float32)
+Components = data[1:,0]
+
+sheet_constraints = book.sheet_by_name('CONSTRAINTS')
+constraints_data = np.array([[sheet_constraints.cell_value(r, c) for c in range(sheet_constraints.ncols)] for r in range(sheet_constraints.nrows)])
+Constraints = constraints_data[1:,1:].astype(np.float32)
+
+
 
 parser = argparse.ArgumentParser(description='PyTorch actor-critic example')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
@@ -23,10 +38,10 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='interval between training status logs (default: 10)')
 args = parser.parse_args()
 
-
-env = gym.make('CartPole-v1')
-env.reset(seed=args.seed)
+env = Clustering_Environment(DSM,Constraints)
+env.seed(args.seed)
 torch.manual_seed(args.seed)
+
 
 
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
@@ -38,10 +53,10 @@ class Policy(nn.Module):
     """
     def __init__(self):
         super(Policy, self).__init__()
-        self.affine1 = nn.Linear(4, 128)
+        self.affine1 = nn.Linear(2304, 128)
 
         # actor's layer
-        self.action_head = nn.Linear(128, 2)
+        self.action_head = nn.Linear(128, 2304)
 
         # critic's layer
         self.value_head = nn.Linear(128, 1)
@@ -56,7 +71,7 @@ class Policy(nn.Module):
         """
         x = F.relu(self.affine1(x))
 
-        # actor: choses action to take from state s_t
+        # actor: choses action to take from state s_t 
         # by returning probability of each action
         action_prob = F.softmax(self.action_head(x), dim=-1)
 
@@ -65,7 +80,7 @@ class Policy(nn.Module):
 
         # return values for both actor and critic as a tuple of 2 values:
         # 1. a list with the probability of each action over the action space
-        # 2. the value from state s_t
+        # 2. the value from state s_t 
         return action_prob, state_values
 
 
@@ -107,13 +122,13 @@ def finish_episode():
         R = r + args.gamma * R
         returns.insert(0, R)
 
-    returns = torch.tensor(returns)
+    returns = torch.tensor(returns).to(torch.float32)
     returns = (returns - returns.mean()) / (returns.std() + eps)
 
     for (log_prob, value), R in zip(saved_actions, returns):
         advantage = R - value.item()
 
-        # calculate actor (policy) loss
+        # calculate actor (policy) loss 
         policy_losses.append(-log_prob * advantage)
 
         # calculate critic (value) loss using L1 smooth loss
@@ -137,22 +152,22 @@ def finish_episode():
 def main():
     running_reward = 10
 
-    # run infinitely many episodes
-    for i_episode in count(1):
+    # run inifinitely many episodes
+    for i_episode in range(100):
 
         # reset environment and episode reward
-        state, _ = env.reset()
+        state = env.reset()
         ep_reward = 0
 
-        # for each episode, only run 9999 steps so that we don't
+        # for each episode, only run 9999 steps so that we don't 
         # infinite loop while learning
-        for t in range(1, 10000):
+        for t in range(1, 1000):
 
             # select action from policy
             action = select_action(state)
 
             # take the action
-            state, reward, done, _, _ = env.step(action)
+            state, reward, done, _ = env.step(action)
 
             if args.render:
                 env.render()
@@ -174,10 +189,12 @@ def main():
                   i_episode, ep_reward, running_reward))
 
         # check if we have "solved" the cart pole problem
+        '''
         if running_reward > env.spec.reward_threshold:
             print("Solved! Running reward is now {} and "
                   "the last episode runs to {} time steps!".format(running_reward, t))
             break
+        '''
 
 
 if __name__ == '__main__':

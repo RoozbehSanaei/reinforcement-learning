@@ -54,8 +54,7 @@ def cost(DSM,  cluster_matrix, pow_cc=1):
 
 
 class Clustering_Environment(gym.Env):
-    """Four rooms game environment as described in paper http://www-anw.cs.umass.edu/~barto/courses/cs687/Sutton-Precup-Singh-AIJ99.pdf"""
-    environment_name = "Four Rooms"
+    environment_name = "Clustering_Environment"
 
     def __init__(self, DSM,Constraints,Num_Clusters=5):
 
