@@ -99,7 +99,7 @@ def select_action(state):
     probs, state_value = model(state)
 
     # create a categorical distribution over the list of probabilities of actions
-    m = Categorical(probs)
+    m = Categorical(torch.flatten(probs))
 
     # and sample an action using the distribution
     action = m.sample()

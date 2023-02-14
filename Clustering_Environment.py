@@ -152,7 +152,7 @@ class Clustering_Environment(gym.Env):
         if ((r1>0) or (r2>0)):    
             self.cost = c
             self.cluster_seq = ns
-            self.next_state = np.ndarray.flatten(elementwise_cluster)
+            self.next_state = elementwise_cluster
             self.contraints_violations = contraints_violations
             self.unchanged = 0
             self.reward = r1 + r2
