@@ -55,10 +55,11 @@ class Policy(nn.Module):
     """
     def __init__(self):
         super(Policy, self).__init__()
-        self.affine1 = nn.Linear(2304, 128)
+        self.affine1 = GCNConv(48, 128, cached=True,
+                             normalize=True)
 
         # actor's layer
-        self.action_head = nn.Linear(128, 2304)
+        self.action_head = nn.Linear(128, 2)
 
         # critic's layer
         self.value_head = nn.Linear(128, 1)
@@ -71,7 +72,9 @@ class Policy(nn.Module):
         """
         forward of both actor and critic
         """
-        x = F.relu(self.affine1(x))
+
+        t = torch.tensor(np.array(np.ones((2,48))), dtype=torch.long)
+        x = F.relu(self.affine1(x,edge_index=t))
 
         # actor: choses action to take from state s_t
         # by returning probability of each action

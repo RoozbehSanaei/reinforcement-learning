@@ -98,7 +98,7 @@ class Clustering_Environment(gym.Env):
         #if (self.step_count>=20000): self.max_steps = int(self.step_count*1.3)
         self.step_count = 0
         self.done = False
-        self.state = np.ndarray.flatten(self.elementwise_cluster)
+        self.state = self.elementwise_cluster
         self.goal = self.goal - 100
         self.unchanged = 0
 
