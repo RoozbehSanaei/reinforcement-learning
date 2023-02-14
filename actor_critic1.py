@@ -183,19 +183,6 @@ def main():
         # perform backprop
         finish_episode()
 
-        # log results
-        if i_episode % args.log_interval == 0:
-            print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
-                  i_episode, ep_reward, running_reward))
-
-        # check if we have "solved" the cart pole problem
-        '''
-        if running_reward > env.spec.reward_threshold:
-            print("Solved! Running reward is now {} and "
-                  "the last episode runs to {} time steps!".format(running_reward, t))
-            break
-        '''
-
 
 if __name__ == '__main__':
     main()

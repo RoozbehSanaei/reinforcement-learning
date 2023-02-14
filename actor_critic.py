@@ -3,12 +3,30 @@ import gym
 import numpy as np
 from itertools import count
 from collections import namedtuple
-
+import xlrd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
+from Clustering_Environment import Clustering_Environment
+from torch_geometric.nn import GCNConv
+
+
+#load DSM and Constraints
+
+
+book = xlrd.open_workbook('contrastInjector.xls')
+
+sheet_data = book.sheet_by_name('DSM')
+data = np.array([[sheet_data.cell_value(r, c) for c in range(sheet_data.ncols)] for r in range(sheet_data.nrows)])
+DSM = data[1:,1:].astype(np.float32)
+Components = data[1:,0]
+
+sheet_constraints = book.sheet_by_name('CONSTRAINTS')
+constraints_data = np.array([[sheet_constraints.cell_value(r, c) for c in range(sheet_constraints.ncols)] for r in range(sheet_constraints.nrows)])
+Constraints = constraints_data[1:,1:].astype(np.float32)
+
 
 # Cart Pole
 
@@ -24,8 +42,7 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 args = parser.parse_args()
 
 
-env = gym.make('CartPole-v1')
-env.reset(seed=args.seed)
+env =  Clustering_Environment(DSM,Constraints)
 torch.manual_seed(args.seed)
 
 
@@ -38,10 +55,10 @@ class Policy(nn.Module):
     """
     def __init__(self):
         super(Policy, self).__init__()
-        self.affine1 = nn.Linear(4, 128)
+        self.affine1 = nn.Linear(2304, 128)
 
         # actor's layer
-        self.action_head = nn.Linear(128, 2)
+        self.action_head = nn.Linear(128, 2304)
 
         # critic's layer
         self.value_head = nn.Linear(128, 1)
@@ -141,7 +158,7 @@ def main():
     for i_episode in count(1):
 
         # reset environment and episode reward
-        state, _ = env.reset()
+        state  = env.reset()
         ep_reward = 0
 
         # for each episode, only run 9999 steps so that we don't
@@ -152,7 +169,7 @@ def main():
             action = select_action(state)
 
             # take the action
-            state, reward, done, _, _ = env.step(action)
+            state, reward, done, _ = env.step(action)
 
             if args.render:
                 env.render()
@@ -173,11 +190,13 @@ def main():
             print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
                   i_episode, ep_reward, running_reward))
 
+        '''
         # check if we have "solved" the cart pole problem
         if running_reward > env.spec.reward_threshold:
             print("Solved! Running reward is now {} and "
                   "the last episode runs to {} time steps!".format(running_reward, t))
             break
+        '''
 
 
 if __name__ == '__main__':

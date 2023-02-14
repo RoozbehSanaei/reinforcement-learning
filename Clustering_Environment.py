@@ -77,8 +77,8 @@ class Clustering_Environment(gym.Env):
         self.id = "Clustering"
         self.reward_threshold = 0.0
         self.trials = 100
-
-
+        self.min_cost = 10000
+        self.min_violations = 1000
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -101,6 +101,7 @@ class Clustering_Environment(gym.Env):
         self.state = np.ndarray.flatten(self.elementwise_cluster)
         self.goal = self.goal - 100
         self.unchanged = 0
+
 
         return self.state
 
@@ -135,25 +136,35 @@ class Clustering_Environment(gym.Env):
 
 
         c = cost(self.DSM,  seq_2_mat(ns), pow_cc=1)
-        
-        r = self.cost - c + (self.contraints_violations - contraints_violations)
 
+        
+        
+        r1 = (self.cost - c) 
+        r2 = (self.contraints_violations - contraints_violations)
+
+
+        if (c<self.min_cost):
+            self.min_cost = c
+            self.min_violations = self.contraints_violations
+            
 
         #print(cost(self.DSM,  seq_2_mat(self.cluster_seq), pow_cc=1))
-        if (r>0):    
+        if ((r1>0) or (r2>0)):    
             self.cost = c
             self.cluster_seq = ns
             self.next_state = np.ndarray.flatten(elementwise_cluster)
             self.contraints_violations = contraints_violations
             self.unchanged = 0
-            self.reward = r
+            self.reward = r1 + r2
+            
+            print(self.cost,self.contraints_violations,self.min_cost,self.min_violations)
         else:
             self.reward = 0
             self.next_state = self.state
             self.unchanged = self.unchanged + 1 
         
         self.step_count += 1
-        print(f"{self.cost},{self.unchanged}     ",end="\r")
+        #print(f"{self.cost},{self.unchanged}     ",end="\r")
         #("cost: ",self.c
         # ost,"\r",end="")
 
