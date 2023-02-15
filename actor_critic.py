@@ -95,8 +95,8 @@ class Policy(nn.Module):
         x = F.relu(self.affine1(x,edge_index=t,edge_weight=s))
         x = F.relu(self.linear1(x))
         x = F.relu(self.linear2(x))
-        x = self.affine2(x,edge_index=t)
-        x = self.affine3(x,edge_index=t)
+        x = F.relu(self.affine2(x,edge_index=t))
+        x = F.relu(self.affine3(x,edge_index=t))
 
 
         # actor: choses action to take from state s_t

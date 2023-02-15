@@ -10,6 +10,11 @@ from gym.utils import seeding
 from matplotlib import pyplot
 from random import randint
 
+def pad_with(vector, pad_width, iaxis, kwargs):
+    pad_value = kwargs.get('padder', 10)
+    vector[:pad_width[0]] = pad_value
+    vector[-pad_width[1]:] = pad_value
+
 
 def fix(seq):
     c = 0
@@ -56,11 +61,17 @@ def cost(DSM,  cluster_matrix, pow_cc=1):
 class Clustering_Environment(gym.Env):
     environment_name = "Clustering_Environment"
 
-    def __init__(self, DSM,Constraints,Num_Clusters=5):
+    def __init__(self, DSM,Constraints,Num_Clusters=5,pad_width=0):
 
-        self.DSM = DSM
-        self.Constraints = Constraints
-        self.N = DSM.shape[0]
+        if (pad_width>0):
+            self.DSM = np.pad(DSM, 0, pad_with,padder=0)
+            self.Constraints = np.pad(Constraints, 0, pad_with,padder=0)
+        else:
+            self.DSM = DSM
+            self.Constraints = Constraints
+
+
+        self.N = self.DSM.shape[0]
         self.Num_Clusters = Num_Clusters
         self.cluster_seq = list(range(self.N)) 
         self.cost = cost(self.DSM,  seq_2_mat(self.cluster_seq), pow_cc=1) 
