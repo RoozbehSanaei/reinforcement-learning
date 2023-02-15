@@ -70,10 +70,11 @@ class Clustering_Environment(gym.Env):
             self.DSM = DSM
             self.Constraints = Constraints
 
-
+        self.training = False
         self.N = self.DSM.shape[0]
         self.Num_Clusters = Num_Clusters
         self.cluster_seq = list(range(self.N)) 
+        self.min_cluster_seq = self.cluster_seq
         self.cost = cost(self.DSM,  seq_2_mat(self.cluster_seq), pow_cc=1) 
         cluster_mat = seq_2_mat(self.cluster_seq)
         cluster_mat_trans = cluster_mat.transpose()
@@ -99,6 +100,7 @@ class Clustering_Environment(gym.Env):
         """Resets the environment and returns the start state"""
 
         self.cluster_seq = list(range(self.N)) 
+        self.min_cluster_seq = self.cluster_seq
         self.cost = cost(self.DSM,  seq_2_mat(self.cluster_seq), pow_cc=1) 
         cluster_mat = seq_2_mat(self.cluster_seq)
         cluster_mat_trans = cluster_mat.transpose()
@@ -157,6 +159,8 @@ class Clustering_Environment(gym.Env):
         if ((c<self.min_cost) and (contraints_violations<= self.min_violations)):
             self.min_cost = c
             self.min_violations = contraints_violations
+            self.min_cluster_seq = ns
+            print(len(ns))
             
 
         #print(cost(self.DSM,  seq_2_mat(self.cluster_seq), pow_cc=1))
@@ -168,7 +172,7 @@ class Clustering_Environment(gym.Env):
             self.unchanged = 0
             self.reward = r1 + r2
             
-            print(self.cost,self.contraints_violations,self.min_cost,self.min_violations)
+            if not(self.training): print(self.cost,self.contraints_violations,self.min_cost,self.min_violations)
         else:
             self.reward = 0
             self.next_state = self.state

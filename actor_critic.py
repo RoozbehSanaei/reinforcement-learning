@@ -15,42 +15,14 @@ from torch_geometric.nn.aggr import MaxAggregation
 from torch.nn.functional import pad
 from networkx.generators.random_graphs import erdos_renyi_graph
 from networkx import adjacency_matrix
-
-#load DSM and Constraints
-
-
-book = xlrd.open_workbook('contrastInjector.xls')
-
-sheet_data = book.sheet_by_name('DSM')
-data = np.array([[sheet_data.cell_value(r, c) for c in range(sheet_data.ncols)] for r in range(sheet_data.nrows)])
-DSM = data[1:,1:].astype(np.float32)
-Components = data[1:,0]
-
-sheet_constraints = book.sheet_by_name('CONSTRAINTS')
-constraints_data = np.array([[sheet_constraints.cell_value(r, c) for c in range(sheet_constraints.ncols)] for r in range(sheet_constraints.nrows)])
-Constraints = constraints_data[1:,1:].astype(np.float32)
+import tqdm
 
 
-
-# Cart Pole
-
-parser = argparse.ArgumentParser(description='PyTorch actor-critic example')
-parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
-                    help='discount factor (default: 0.99)')
-parser.add_argument('--seed', type=int, default=543, metavar='N',
-                    help='random seed (default: 543)')
-parser.add_argument('--render', action='store_true',
-                    help='render the environment')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                    help='interval between training status logs (default: 10)')
-args = parser.parse_args()
-
-
-env =  Clustering_Environment(DSM,Constraints)
-torch.manual_seed(args.seed)
-
-
-SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
+gamma = 0.99
+seed = 543
+N = 48
+number_of_training = 10000
+training = False
 
 
 class Policy(nn.Module):
@@ -122,7 +94,7 @@ class Policy(nn.Module):
 model = Policy()
 optimizer = optim.Adam(model.parameters(), lr=3e-2)
 eps = np.finfo(np.float32).eps.item()
-
+SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 
 def select_action(state,DSM):
     state = torch.from_numpy(state).float()
@@ -154,7 +126,7 @@ def finish_episode():
     # calculate the true value using rewards returned from the environment
     for r in model.rewards[::-1]:
         # calculate the discounted value
-        R = r + args.gamma * R
+        R = r + gamma * R
         returns.insert(0, R)
 
     returns = torch.tensor(returns)
@@ -183,12 +155,53 @@ def finish_episode():
     del model.rewards[:]
     del model.saved_actions[:]
 
+model = torch.load("/drive2/src/reinforcement-learning/save.pt")
 
 def main():
     running_reward = 10
 
-    # run infinitely many episodes
-    for i_episode in count(1):
+
+    if not(training):
+
+        book = xlrd.open_workbook('contrastInjector.xls')
+
+        sheet_data = book.sheet_by_name('DSM')
+        data = np.array([[sheet_data.cell_value(r, c) for c in range(sheet_data.ncols)] for r in range(sheet_data.nrows)])
+        DSM = data[1:,1:].astype(np.float32)
+        Components = data[1:,0]
+
+        sheet_constraints = book.sheet_by_name('CONSTRAINTS')
+        constraints_data = np.array([[sheet_constraints.cell_value(r, c) for c in range(sheet_constraints.ncols)] for r in range(sheet_constraints.nrows)])
+        Constraints = constraints_data[1:,1:].astype(np.float32)
+
+
+    if training:
+        number_of_instances =  number_of_training
+    else:
+        number_of_instances =  1
+
+    
+    for iteration in range(number_of_instances):
+        ratio = iteration/number_of_instances
+
+        if (training):    
+            n = int(18+ratio*20)
+            g = erdos_renyi_graph(n, 0.2+0.3*ratio)
+            DSM = adjacency_matrix(g).todense().astype(np.float32)
+            c = erdos_renyi_graph(n, 0.01+0.04*ratio)
+            Constraints = adjacency_matrix(g).todense().astype(np.float32)
+            DSM = np.pad(DSM,int((N-n)/2), pad_with,padder=0)
+            Constraints = np.pad(Constraints, int((N-n)/2), pad_with,padder=0)
+            
+
+
+        # Cart Pole
+
+        env =  Clustering_Environment(DSM,Constraints)
+        env.training = training
+        torch.manual_seed(seed)
+
+
 
         # reset environment and episode reward
         state  = env.reset()
@@ -196,16 +209,13 @@ def main():
 
         # for each episode, only run 9999 steps so that we don't
         # infinite loop while learning
-        for t in range(1, 30000):
+        for t in tqdm.trange(1, 12000):
 
             # select action from policy
             action = select_action(state,env.DSM)
 
             # take the action
             state, reward, done, _ = env.step(action)
-
-            if args.render:
-                env.render()
 
             model.rewards.append(reward)
             ep_reward += reward
@@ -218,18 +228,33 @@ def main():
         # perform backprop
         finish_episode()
 
-        # log results
-        if i_episode % args.log_interval == 0:
-            print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
-                  i_episode, ep_reward, running_reward))
+        torch.save(model, "/drive2/src/reinforcement-learning/save.pt")
 
-        '''
-        # check if we have "solved" the cart pole problem
-        if running_reward > env.spec.reward_threshold:
-            print("Solved! Running reward is now {} and "
-                  "the last episode runs to {} time steps!".format(running_reward, t))
-            break
-        '''
+        import matplotlib.pyplot as plt
+        from matplotlib.pyplot import figure
+        from matplotlib import patches
+
+        element_list = []
+        for i in range(np.max(env.min_cluster_seq)+1):
+            element_list=element_list+list(np.where(np.array(env.min_cluster_seq)==i)[0])
+        element_list = np.array(element_list)
+        New_Cluster = np.array(env.min_cluster_seq)[np.array(element_list)]
+        New_DSM = np.array([env.DSM[i][element_list] for i in element_list])
+
+        fig, ax = plt.subplots(num=None, figsize=(16, 12), dpi=80, facecolor='w', edgecolor='k')
+        ax.imshow(1-New_DSM,cmap='gray')
+        ax.set_xticks(list(range(New_DSM.shape[0])))
+        ax.set_xticklabels(Components, rotation=90, horizontalalignment='right')
+        ax.set_yticks(list(range(New_DSM.shape[0])))
+        ax.set_yticklabels(Components)
+        for s in np.unique(New_Cluster):
+            i = np.where(New_Cluster==s)[0][0]
+            l = len(np.where(New_Cluster==s)[0])
+            rect = patches.Rectangle((i-0.5,i-0.5),l,l,linewidth=2,edgecolor='r',facecolor='none')
+            ax.add_patch(rect)
+        
+        plt.savefig('books_read.png')
+        
 
 
 if __name__ == '__main__':
