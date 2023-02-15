@@ -11,7 +11,8 @@ import torch.optim as optim
 from torch.distributions import Categorical
 from Clustering_Environment import Clustering_Environment
 from torch_geometric.nn import GCNConv
-
+from torch_geometric.nn.aggr import MaxAggregation
+from torch.nn.functional import pad
 
 #load DSM and Constraints
 
@@ -55,33 +56,51 @@ class Policy(nn.Module):
     """
     def __init__(self):
         super(Policy, self).__init__()
-        self.affine1 = GCNConv(48, 128, cached=True,
+        self.affine1 = GCNConv(1, 1, cached=True,
                              normalize=True)
 
+        self.M  = MaxAggregation()
+
         # actor's layer
-        self.action_head = nn.Linear(128, 2)
+        self.action_head = nn.Linear(1, 1)
 
         # critic's layer
-        self.value_head = nn.Linear(128, 1)
+        self.value_head = nn.Linear(1, 1)
 
         # action & reward buffer
         self.saved_actions = []
         self.rewards = []
 
-    def forward(self, x):
+    def forward(self, x,DSM):
         """
         forward of both actor and critic
         """
+        edges_indices = [[],[]]
+        edge_values = []
+        for edges_start in range(48):
+            for edges_end in range(48):
+                edges_indices[0].append(edges_start)
+                edges_indices[1].append(edges_end)
+                edge_values.append(DSM[edges_start,edges_end])
 
-        t = torch.tensor(np.array(np.ones((2,48))), dtype=torch.long)
-        x = F.relu(self.affine1(x,edge_index=t))
+        t = torch.tensor(edges_indices, dtype=torch.long)
+        s = torch.tensor(edge_values, dtype=torch.float)
+        x = x[:,:,None]
+        x = F.relu(self.affine1(x,edge_index=t,edge_weight=s))
+
+        
+
 
         # actor: choses action to take from state s_t
         # by returning probability of each action
         action_prob = F.softmax(self.action_head(x), dim=-1)
 
+        u = self.M(x,dim_size=1,dim=0)
+        v = self.M(u,dim_size=1,dim=-2)
+
+
         # critic: evaluates being in the state s_t
-        state_values = self.value_head(x)
+        state_values = self.value_head(v)
 
         # return values for both actor and critic as a tuple of 2 values:
         # 1. a list with the probability of each action over the action space
@@ -94,9 +113,9 @@ optimizer = optim.Adam(model.parameters(), lr=3e-2)
 eps = np.finfo(np.float32).eps.item()
 
 
-def select_action(state):
+def select_action(state,DSM):
     state = torch.from_numpy(state).float()
-    probs, state_value = model(state)
+    probs, state_value = model(state,DSM)
 
     # create a categorical distribution over the list of probabilities of actions
     m = Categorical(torch.flatten(probs))
@@ -166,10 +185,10 @@ def main():
 
         # for each episode, only run 9999 steps so that we don't
         # infinite loop while learning
-        for t in range(1, 10000):
+        for t in range(1, 30000):
 
             # select action from policy
-            action = select_action(state)
+            action = select_action(state,env.DSM)
 
             # take the action
             state, reward, done, _ = env.step(action)
