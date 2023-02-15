@@ -58,6 +58,12 @@ class Policy(nn.Module):
         super(Policy, self).__init__()
         self.affine1 = GCNConv(1, 1, cached=True,
                              normalize=True)
+        self.linear1 = nn.Linear(1, 1)
+        self.linear2 = nn.Linear(1, 1)
+        self.affine2 = GCNConv(1, 1, cached=True,
+                             normalize=True)
+        self.affine3 = GCNConv(1, 1, cached=True,
+                             normalize=True)                             
 
         self.M  = MaxAggregation()
 
@@ -77,8 +83,8 @@ class Policy(nn.Module):
         """
         edges_indices = [[],[]]
         edge_values = []
-        for edges_start in range(48):
-            for edges_end in range(48):
+        for edges_start in range(DSM.shape[0]):
+            for edges_end in range(DSM.shape[1]):
                 edges_indices[0].append(edges_start)
                 edges_indices[1].append(edges_end)
                 edge_values.append(DSM[edges_start,edges_end])
@@ -87,8 +93,10 @@ class Policy(nn.Module):
         s = torch.tensor(edge_values, dtype=torch.float)
         x = x[:,:,None]
         x = F.relu(self.affine1(x,edge_index=t,edge_weight=s))
-
-        
+        x = F.relu(self.linear1(x))
+        x = F.relu(self.linear2(x))
+        x = self.affine2(x,edge_index=t)
+        x = self.affine3(x,edge_index=t)
 
 
         # actor: choses action to take from state s_t
