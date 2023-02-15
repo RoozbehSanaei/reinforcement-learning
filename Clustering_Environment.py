@@ -88,8 +88,8 @@ class Clustering_Environment(gym.Env):
         self.id = "Clustering"
         self.reward_threshold = 0.0
         self.trials = 100
-        self.min_cost = 10000
-        self.min_violations = 1000
+        self.min_cost = 100000
+        self.min_violations = 10000
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

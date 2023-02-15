@@ -9,10 +9,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
-from Clustering_Environment import Clustering_Environment
+from Clustering_Environment import Clustering_Environment,pad_with
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn.aggr import MaxAggregation
 from torch.nn.functional import pad
+from networkx.generators.random_graphs import erdos_renyi_graph
+from networkx import adjacency_matrix
 
 #load DSM and Constraints
 
@@ -29,12 +31,6 @@ constraints_data = np.array([[sheet_constraints.cell_value(r, c) for c in range(
 Constraints = constraints_data[1:,1:].astype(np.float32)
 
 
-g = erdos_renyi_graph(n, 0.2)
-DSM = adjacency_matrix(g).todense().astype(np.float32)
-c = erdos_renyi_graph(n, 0.01)
-Constraints = adjacency_matrix(g).todense().astype(np.float32)
-DSM = np.pad(DSM,int((N-n)/2), pad_with,padder=0)
-Constraints = np.pad(Constraints, int((N-n)/2), pad_with,padder=0)
 
 # Cart Pole
 
