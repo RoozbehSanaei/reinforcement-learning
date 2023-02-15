@@ -154,9 +154,9 @@ class Clustering_Environment(gym.Env):
         r2 = (self.contraints_violations - contraints_violations)
 
 
-        if (c<self.min_cost):
+        if ((c<self.min_cost) and (contraints_violations<= self.min_violations)):
             self.min_cost = c
-            self.min_violations = self.contraints_violations
+            self.min_violations = contraints_violations
             
 
         #print(cost(self.DSM,  seq_2_mat(self.cluster_seq), pow_cc=1))
