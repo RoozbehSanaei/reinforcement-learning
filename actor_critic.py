@@ -21,12 +21,14 @@ from matplotlib.pyplot import figure
 from matplotlib import patches
 
 
-gamma = 0.99
-seed = 543
-N = 48
-number_of_training = 10000
+filename = 'contrastInjector.xls'
 training = False
 plot_diagram = True
+
+gamma = 0.99 # gamma, value is good
+seed = 543 # seed number for random number generation
+N = 48 # maximum number of components assumed
+number_of_training = 20000 #number of random training samples for pre-training
 
 
 class Policy(nn.Module):
@@ -168,7 +170,7 @@ def main():
 
     if not (training):
 
-        book = xlrd.open_workbook('contrastInjector.xls')
+        book = xlrd.open_workbook(filename)
 
         sheet_data = book.sheet_by_name('DSM')
         data = np.array([[sheet_data.cell_value(r, c) for c in range(
@@ -190,7 +192,7 @@ def main():
         ratio = iteration/number_of_instances
 
         if (training):
-            n = int(18+ratio*20)
+            n = int(18+ratio*24)
             g = erdos_renyi_graph(n, 0.2+0.3*ratio)
             DSM = adjacency_matrix(g).todense().astype(np.float32)
             c = erdos_renyi_graph(n, 0.01+0.04*ratio)
