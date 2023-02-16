@@ -21,14 +21,14 @@ from matplotlib.pyplot import figure
 from matplotlib import patches
 
 
-filename = 'contrastInjector.xls'
+filename = 'Contrast_Injector.xls'
 training = False
 plot_diagram = True
 
-gamma = 0.99 # gamma, value is good
-seed = 543 # seed number for random number generation
-N = 48 # maximum number of components assumed
-number_of_training = 20000 #number of random training samples for pre-training
+gamma = 0.99  # gamma, value is good
+seed = 543  # seed number for random number generation
+N = 48  # maximum number of components assumed
+number_of_training = 20000  # number of random training samples for pre-training
 
 
 class Policy(nn.Module):

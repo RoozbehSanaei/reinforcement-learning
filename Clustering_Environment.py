@@ -53,7 +53,6 @@ def cost(DSM,  cluster_matrix, pow_cc=1):
     cluster_size = np.sum(cluster_matrix, axis=1)
     cscc = np.power(cluster_size, pow_cc)
     io_intra = np.dot(ioi, cscc)
-
     return (io_extra+io_intra)
 
 
@@ -109,13 +108,11 @@ class Clustering_Environment(gym.Env):
             (self.Constraints)*self.elementwise_cluster)
         self.next_state = None
         self.reward = None
-        # if (self.step_count>=20000): self.max_steps = int(self.step_count*1.3)
         self.step_count = 0
         self.done = False
         self.state = self.elementwise_cluster
         self.goal = self.goal - 100
         self.unchanged = 0
-
         return self.state
 
     def step(self, desired_action):
@@ -140,9 +137,7 @@ class Clustering_Environment(gym.Env):
         cluster_mat_trans = cluster_mat.transpose()
         elementwise_cluster = np.dot(cluster_mat_trans, cluster_mat)
         contraints_violations = np.sum((self.Constraints)*elementwise_cluster)
-
         c = cost(self.DSM,  seq_2_mat(ns), pow_cc=1)
-
         r1 = (self.cost - c)
         r2 = (self.contraints_violations - contraints_violations)
 
@@ -151,7 +146,6 @@ class Clustering_Environment(gym.Env):
             self.min_violations = contraints_violations
             self.min_cluster_seq = ns
 
-        # print(cost(self.DSM,  seq_2_mat(self.cluster_seq), pow_cc=1))
         if ((r1 > 0) or (r2 > 0)):
             self.cost = c
             self.cluster_seq = ns
@@ -169,10 +163,5 @@ class Clustering_Environment(gym.Env):
             self.unchanged = self.unchanged + 1
 
         self.step_count += 1
-        # print(f"{self.cost},{self.unchanged}     ",end="\r")
-        # ("cost: ",self.c
-        # ost,"\r",end="")
-
         self.s = np.array(self.next_state)
-
         return self.s, self.reward, self.done, {}
